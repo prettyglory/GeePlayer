@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gee_player/app/media_library_providers.dart';
@@ -63,4 +65,7 @@ class _FakeMediaRepository implements LocalMediaRepository {
 
   @override
   Future<int> importFiles() => throw UnimplementedError();
+
+  @override
+  Future<Uint8List?> loadArtwork(LocalMedia media) async => null;
 }

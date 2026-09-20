@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/domain/media/local_media.dart';
+import 'package:gee_player/presentation/widgets/media_artwork.dart';
 
 class MediaListTile extends StatelessWidget {
   const MediaListTile({required this.media, super.key});
@@ -9,7 +10,6 @@ class MediaListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isVideo = media.kind == MediaKind.video;
     final details = [
       if (media.artist != null && media.artist!.isNotEmpty) media.artist!,
       if (media.format.isNotEmpty) media.format,
@@ -27,19 +27,7 @@ class MediaListTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: GeeColors.surfaceRaised,
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              isVideo ? Icons.movie_outlined : Icons.music_note_rounded,
-              color: GeeColors.accentLight,
-              size: 29,
-            ),
-          ),
+          MediaArtwork(media: media),
           const SizedBox(width: 13),
           Expanded(
             child: Column(

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:gee_player/domain/media/library_snapshot.dart';
@@ -139,4 +140,7 @@ class ImportedMediaRepository implements LocalMediaRepository {
     if (_audioExtensions.contains(extension)) return MediaKind.audio;
     return null;
   }
+
+  @override
+  Future<Uint8List?> loadArtwork(LocalMedia media) async => null;
 }

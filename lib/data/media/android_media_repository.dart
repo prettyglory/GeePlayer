@@ -8,6 +8,7 @@ class AndroidMediaRepository implements LocalMediaRepository {
     : _channel = channel ?? const MethodChannel('com.gee.player/media_library');
 
   final MethodChannel _channel;
+  final Map<String, Future<Uint8List?>> _artworkCache = {};
 
   @override
   bool get supportsFileImport => false;
@@ -44,6 +45,23 @@ class AndroidMediaRepository implements LocalMediaRepository {
   @override
   Future<int> importFiles() =>
       throw UnsupportedError('Android media is discovered through MediaStore.');
+
+  @override
+  Future<Uint8List?> loadArtwork(LocalMedia media) {
+    final existing = _artworkCache[media.uri];
+    if (existing != null) return existing;
+    if (_artworkCache.length >= 128) {
+      _artworkCache.remove(_artworkCache.keys.first);
+    }
+    final result = _channel
+        .invokeMethod<Uint8List>('artwork', {
+          'uri': media.uri,
+          'kind': media.kind.name,
+        })
+        .catchError((Object error) => null);
+    _artworkCache[media.uri] = result;
+    return result;
+  }
 
   MediaAccess _accessFrom(Map<String, dynamic> response) => MediaAccess(
     videos: _levelFrom(response['videoAccess']),

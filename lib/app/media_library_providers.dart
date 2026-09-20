@@ -75,4 +75,7 @@ class _UnsupportedMediaRepository implements LocalMediaRepository {
   @override
   Future<int> importFiles() =>
       throw UnsupportedError('Media import is available on iOS.');
+
+  @override
+  Future<Uint8List?> loadArtwork(LocalMedia media) async => null;
 }

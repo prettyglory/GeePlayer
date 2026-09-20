@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 
@@ -9,4 +11,6 @@ abstract interface class LocalMediaRepository {
   Future<MediaAccess> requestAccess({MediaKind? kind});
 
   Future<int> importFiles();
+
+  Future<Uint8List?> loadArtwork(LocalMedia media);
 }

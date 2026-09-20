@@ -8,6 +8,36 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('com.gee.player/media_library');
 
+  test('loads artwork once for each content URI', () async {
+    var calls = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'artwork');
+          expect(call.arguments, {
+            'uri': 'content://media/external/video/media/42',
+            'kind': 'video',
+          });
+          calls++;
+          return Uint8List.fromList([1, 2, 3]);
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    const media = LocalMedia(
+      id: 'video:42',
+      kind: MediaKind.video,
+      uri: 'content://media/external/video/media/42',
+      fileName: 'Trip.mp4',
+      folderPath: 'Movies',
+    );
+    final repository = AndroidMediaRepository(channel: channel);
+    expect(await repository.loadArtwork(media), [1, 2, 3]);
+    expect(await repository.loadArtwork(media), [1, 2, 3]);
+    expect(calls, 1);
+  });
+
   test('maps Android MediaStore rows and limited access', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {

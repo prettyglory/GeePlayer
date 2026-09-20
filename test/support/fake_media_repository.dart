@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/domain/media/local_media_repository.dart';
@@ -23,6 +25,9 @@ class FakeMediaRepository implements LocalMediaRepository {
 
   @override
   Future<int> importFiles() async => 0;
+
+  @override
+  Future<Uint8List?> loadArtwork(LocalMedia media) async => null;
 }
 
 LibrarySnapshot emptyAccessibleLibrary() => const LibrarySnapshot(

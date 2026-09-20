@@ -4,13 +4,19 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.util.Size
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
@@ -46,6 +52,17 @@ class MainActivity : FlutterActivity() {
                         result,
                         call.argument<String>("kind") ?: "both",
                     )
+                    "artwork" -> scanExecutor.execute {
+                        val bytes = try {
+                            loadArtwork(
+                                call.argument<String>("uri"),
+                                call.argument<String>("kind"),
+                            )
+                        } catch (error: Exception) {
+                            null
+                        }
+                        mainHandler.post { result.success(bytes) }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -194,6 +211,52 @@ class MainActivity : FlutterActivity() {
 
     private fun Cursor.getLongOrNull(index: Int): Long? =
         if (isNull(index)) null else getLong(index)
+
+    private fun loadArtwork(uriText: String?, kind: String?): ByteArray? {
+        if (uriText == null) return null
+        val uri = Uri.parse(uriText)
+        if (uri.scheme != "content") return null
+
+        val bitmap = when (kind) {
+            "video" -> {
+                if (Build.VERSION.SDK_INT >= 29) {
+                    contentResolver.loadThumbnail(uri, Size(160, 160), null)
+                } else {
+                    val id = uri.lastPathSegment?.toLongOrNull() ?: return null
+                    MediaStore.Video.Thumbnails.getThumbnail(
+                        contentResolver,
+                        id,
+                        MediaStore.Video.Thumbnails.MINI_KIND,
+                        null,
+                    )
+                }
+            }
+            "audio" -> {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(this, uri)
+                    val art = retriever.embeddedPicture ?: return null
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(art, 0, art.size, bounds)
+                    var sample = 1
+                    while (bounds.outWidth / sample > 160 || bounds.outHeight / sample > 160) {
+                        sample *= 2
+                    }
+                    val options = BitmapFactory.Options().apply { inSampleSize = sample }
+                    BitmapFactory.decodeByteArray(art, 0, art.size, options)
+                } finally {
+                    retriever.release()
+                }
+            }
+            else -> return null
+        } ?: return null
+
+        return ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 78, output)
+            bitmap.recycle()
+            output.toByteArray()
+        }
+    }
 
     override fun onDestroy() {
         scanExecutor.shutdown()
