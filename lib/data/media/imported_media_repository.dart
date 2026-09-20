@@ -132,6 +132,9 @@ class ImportedMediaRepository implements LocalMediaRepository {
     return imported;
   }
 
+  @override
+  Future<void> openAppSettings() async {}
+
   static MediaKind? _kindFor(String name) {
     final dot = name.lastIndexOf('.');
     if (dot <= 0) return null;

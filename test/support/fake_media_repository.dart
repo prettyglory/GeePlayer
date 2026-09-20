@@ -11,6 +11,7 @@ class FakeMediaRepository implements LocalMediaRepository {
   final bool canImport;
   MediaKind? requestedKind;
   int loadCount = 0;
+  int openSettingsCount = 0;
 
   @override
   bool get supportsFileImport => canImport;
@@ -29,6 +30,11 @@ class FakeMediaRepository implements LocalMediaRepository {
 
   @override
   Future<int> importFiles() async => 0;
+
+  @override
+  Future<void> openAppSettings() async {
+    openSettingsCount++;
+  }
 
   @override
   Future<Uint8List?> loadArtwork(LocalMedia media) async => null;

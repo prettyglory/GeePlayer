@@ -47,6 +47,9 @@ class AndroidMediaRepository implements LocalMediaRepository {
       throw UnsupportedError('Android media is discovered through MediaStore.');
 
   @override
+  Future<void> openAppSettings() => _channel.invokeMethod<void>('openSettings');
+
+  @override
   Future<Uint8List?> loadArtwork(LocalMedia media) {
     final existing = _artworkCache[media.uri];
     if (existing != null) return existing;

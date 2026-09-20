@@ -2,6 +2,7 @@ package com.gee.player
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
@@ -12,6 +13,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Size
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -62,6 +64,19 @@ class MainActivity : FlutterActivity() {
                             null
                         }
                         mainHandler.post { result.success(bytes) }
+                    }
+                    "openSettings" -> {
+                        try {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:$packageName"),
+                                ),
+                            )
+                            result.success(null)
+                        } catch (error: Exception) {
+                            result.error("settings_unavailable", error.message, null)
+                        }
                     }
                     else -> result.notImplemented()
                 }

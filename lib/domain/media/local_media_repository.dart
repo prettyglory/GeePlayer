@@ -10,6 +10,8 @@ abstract interface class LocalMediaRepository {
 
   Future<MediaAccess> requestAccess({MediaKind? kind});
 
+  Future<void> openAppSettings();
+
   Future<int> importFiles();
 
   Future<Uint8List?> loadArtwork(LocalMedia media);

@@ -10,6 +10,8 @@ class MediaStatePanel extends StatelessWidget {
     this.icon,
     this.onRetry,
     this.actionLabel = 'Try again',
+    this.onSecondary,
+    this.secondaryLabel,
     this.compact = false,
     super.key,
   });
@@ -19,6 +21,8 @@ class MediaStatePanel extends StatelessWidget {
   final IconData? icon;
   final VoidCallback? onRetry;
   final String actionLabel;
+  final VoidCallback? onSecondary;
+  final String? secondaryLabel;
   final bool compact;
 
   @override
@@ -54,12 +58,24 @@ class MediaStatePanel extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: GeeColors.textMuted, height: 1.4),
             ),
-            if (onRetry != null) ...[
+            if (onRetry != null || onSecondary != null) ...[
               const SizedBox(height: 14),
-              TextButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(actionLabel),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                children: [
+                  if (onRetry != null)
+                    TextButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(actionLabel),
+                    ),
+                  if (onSecondary != null)
+                    TextButton(
+                      onPressed: onSecondary,
+                      child: Text(secondaryLabel ?? 'More options'),
+                    ),
+                ],
               ),
             ],
           ],

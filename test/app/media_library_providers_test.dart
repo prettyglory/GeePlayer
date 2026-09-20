@@ -67,5 +67,8 @@ class _FakeMediaRepository implements LocalMediaRepository {
   Future<int> importFiles() => throw UnimplementedError();
 
   @override
+  Future<void> openAppSettings() async {}
+
+  @override
   Future<Uint8List?> loadArtwork(LocalMedia media) async => null;
 }

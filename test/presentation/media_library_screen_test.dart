@@ -93,6 +93,9 @@ void main() {
     await tester.tap(find.text('Allow access'));
     await tester.pumpAndSettle();
     expect(repository.requestedKind, MediaKind.video);
+
+    await tester.tap(find.text('App settings'));
+    expect(repository.openSettingsCount, 1);
   });
 
   testWidgets('folder opens its discovered media', (tester) async {

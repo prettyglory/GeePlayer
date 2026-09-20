@@ -145,6 +145,9 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
         actionLabel: 'Allow access',
         onRetry: () =>
             ref.read(mediaLibraryProvider.notifier).requestAccess(kind: _kind),
+        secondaryLabel: 'App settings',
+        onSecondary: () =>
+            ref.read(localMediaRepositoryProvider).openAppSettings(),
       );
     }
 
