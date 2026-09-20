@@ -4,11 +4,13 @@ import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
+import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/screens/media_library_screen.dart';
 import 'package:gee_player/presentation/screens/playback_screen.dart';
+import 'package:gee_player/presentation/screens/subtitle_settings_screen.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 
@@ -52,6 +54,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   Widget build(BuildContext context) {
     final playback = ref.watch(playbackControllerProvider);
+    ref.watch(subtitleControllerProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 700;
@@ -68,6 +71,9 @@ class _AppShellState extends ConsumerState<AppShell>
                   AppDestination.folders => MediaLibraryScreen(
                     key: ValueKey(_selected),
                     destination: _selected,
+                  ),
+                  AppDestination.settings => const SubtitleSettingsScreen(
+                    key: ValueKey(AppDestination.settings),
                   ),
                   _ => FeaturePreviewScreen(
                     key: ValueKey(_selected),

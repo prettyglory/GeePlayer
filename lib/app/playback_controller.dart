@@ -69,6 +69,7 @@ class PlaybackController extends ChangeNotifier {
   bool _completed = false;
   bool _disposed = false;
   bool _initialized = false;
+  int sessionRevision = 0;
   int _lastSavedSecond = 0;
   Future<void> _pendingSave = Future.value();
 
@@ -107,6 +108,7 @@ class PlaybackController extends ChangeNotifier {
         await player.seek(saved);
       }
       await player.play();
+      sessionRevision++;
     } catch (exception) {
       error = 'Could not play ${current?.fileName ?? 'this file'}: $exception';
       try {

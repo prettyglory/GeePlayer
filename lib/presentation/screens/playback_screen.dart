@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
+import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -23,6 +24,125 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   double? _dragPosition;
   double _aspectRatio = 16 / 9;
   bool _fullscreen = false;
+
+  void _showSubtitles() {
+    final subtitles = ref.read(subtitleControllerProvider);
+    final searchController = TextEditingController(
+      text: _controller.current?.title ?? '',
+    );
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => AnimatedBuilder(
+        animation: subtitles,
+        builder: (context, _) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.viewInsetsOf(context).bottom + 24,
+              ),
+              children: [
+                Text(
+                  'Subtitles',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                if (subtitles.message != null) Text(subtitles.message!),
+                if (subtitles.busy) ...[
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: subtitles.progress),
+                ],
+                ListTile(
+                  leading: const Icon(Icons.closed_caption_off_rounded),
+                  title: const Text('Off'),
+                  onTap: subtitles.disable,
+                ),
+                if (subtitles.embedded.isNotEmpty) ...[
+                  const Divider(),
+                  const Text('In this video'),
+                  for (final track in subtitles.embedded)
+                    ListTile(
+                      leading: const Icon(Icons.closed_caption_rounded),
+                      title: Text(
+                        track.title ?? track.language ?? 'Embedded subtitle',
+                      ),
+                      subtitle: track.language == null
+                          ? null
+                          : Text(track.language!),
+                      onTap: () => subtitles.selectEmbedded(track),
+                    ),
+                ],
+                if (subtitles.cached.isNotEmpty) ...[
+                  const Divider(),
+                  const Text('Saved on this device'),
+                  for (final file in subtitles.cached)
+                    ListTile(
+                      leading: const Icon(Icons.download_done_rounded),
+                      title: Text('${file.source} • ${file.language}'),
+                      onTap: () => subtitles.selectCached(file),
+                    ),
+                ],
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.file_open_rounded),
+                  title: const Text('Import local subtitle'),
+                  subtitle: const Text('SRT, VTT, ASS, SSA or SUB'),
+                  onTap: subtitles.importLocal,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: searchController,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: subtitles.search,
+                  decoration: InputDecoration(
+                    labelText: 'Search SubDL by title',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      tooltip: 'Search subtitles',
+                      onPressed: subtitles.busy
+                          ? null
+                          : () => subtitles.search(searchController.text),
+                      icon: const Icon(Icons.search_rounded),
+                    ),
+                  ),
+                ),
+                if (subtitles.online.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'SubDL results',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  for (final option in subtitles.online)
+                    ListTile(
+                      leading: const Icon(Icons.download_rounded),
+                      title: Text(
+                        option.releaseName.isEmpty
+                            ? option.name
+                            : option.releaseName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text('${option.language} • ${option.name}'),
+                      onTap: subtitles.busy
+                          ? null
+                          : () => subtitles.download(option),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(searchController.dispose);
+  }
 
   @override
   void initState() {
@@ -65,6 +185,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(playbackControllerProvider);
+    final subtitles = ref.watch(subtitleControllerProvider);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -122,6 +243,15 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                         _controls(controller),
                         if (media.kind == MediaKind.video)
                           _videoOptions(controller),
+                        if (media.kind == MediaKind.video)
+                          AnimatedBuilder(
+                            animation: subtitles,
+                            builder: (context, _) => Text(
+                              subtitles.message ?? '',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
                         if (controller.loading)
                           const Center(child: CircularProgressIndicator()),
                       ],
@@ -159,10 +289,20 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
         SafeArea(
           child: Align(
             alignment: Alignment.topRight,
-            child: IconButton.filledTonal(
-              tooltip: 'Exit fullscreen',
-              onPressed: _toggleFullscreen,
-              icon: const Icon(Icons.fullscreen_exit_rounded),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton.filledTonal(
+                  tooltip: 'Subtitles',
+                  onPressed: _showSubtitles,
+                  icon: const Icon(Icons.closed_caption_rounded),
+                ),
+                IconButton.filledTonal(
+                  tooltip: 'Exit fullscreen',
+                  onPressed: _toggleFullscreen,
+                  icon: const Icon(Icons.fullscreen_exit_rounded),
+                ),
+              ],
             ),
           ),
         ),
@@ -270,6 +410,11 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
       alignment: WrapAlignment.center,
       spacing: 18,
       children: [
+        TextButton.icon(
+          onPressed: _showSubtitles,
+          icon: const Icon(Icons.closed_caption_rounded),
+          label: const Text('Subtitles'),
+        ),
         DropdownButton<double>(
           value: controller.player.state.rate,
           onChanged: (value) {

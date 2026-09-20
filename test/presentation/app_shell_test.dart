@@ -51,10 +51,7 @@ void main() {
         Icons.favorite_border_rounded,
         'Media you mark as a favorite will appear here.',
       ),
-      (
-        Icons.settings_outlined,
-        'Playback, subtitle, and app preferences are coming in a later phase.',
-      ),
+      (Icons.settings_outlined, 'Subtitles'),
     ]) {
       await tester.tap(find.byIcon(icon).first);
       await tester.pumpAndSettle();
