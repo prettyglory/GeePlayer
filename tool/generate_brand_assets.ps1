@@ -1,4 +1,4 @@
-# Generates the native launcher and iOS launch images from the same simple mark.
+# Generates the Android launcher icons from the Gee Player mark.
 # Run from PowerShell on Windows: ./tool/generate_brand_assets.ps1
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -91,21 +91,4 @@ foreach ($density in $androidSizes.Keys) {
     Save-GeeImage -Path $destination -Width $pixels -Height $pixels -Transparent $false -MarkSide ([single] ($pixels * 0.76))
 }
 
-$iosIconRoot = Join-Path $projectRoot 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
-$iconManifest = Get-Content -LiteralPath (Join-Path $iosIconRoot 'Contents.json') -Raw | ConvertFrom-Json
-foreach ($image in $iconManifest.images) {
-    $pointSize = [double]::Parse($image.size.Split('x')[0], [Globalization.CultureInfo]::InvariantCulture)
-    $scale = [int] $image.scale.Substring(0, 1)
-    $pixels = [int] [Math]::Round($pointSize * $scale)
-    $destination = Join-Path $iosIconRoot $image.filename
-    Save-GeeImage -Path $destination -Width $pixels -Height $pixels -Transparent $false -MarkSide ([single] ($pixels * 0.76))
-}
-
-$iosLaunchRoot = Join-Path $projectRoot 'ios/Runner/Assets.xcassets/LaunchImage.imageset'
-for ($scale = 1; $scale -le 3; $scale++) {
-    $filename = if ($scale -eq 1) { 'LaunchImage.png' } else { "LaunchImage@${scale}x.png" }
-    $destination = Join-Path $iosLaunchRoot $filename
-    Save-GeeImage -Path $destination -Width (168 * $scale) -Height (185 * $scale) -Transparent $true -MarkSide ([single] (112 * $scale))
-}
-
-Write-Output 'Generated Android and iOS Gee Player icons and iOS launch images.'
+Write-Output 'Generated Android Gee Player launcher icons.'
