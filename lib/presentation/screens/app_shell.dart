@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
+import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 
 class AppShell extends StatefulWidget {
@@ -25,10 +26,15 @@ class _AppShellState extends State<AppShell> {
         final wide = constraints.maxWidth >= 700;
         final content = AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
-          child: FeaturePreviewScreen(
-            key: ValueKey(_selected),
-            destination: _selected,
-          ),
+          child: _selected == AppDestination.home
+              ? HomeScreen(
+                  key: const ValueKey(AppDestination.home),
+                  onNavigate: (destination) => _select(destination.index),
+                )
+              : FeaturePreviewScreen(
+                  key: ValueKey(_selected),
+                  destination: _selected,
+                ),
         );
 
         return Scaffold(
