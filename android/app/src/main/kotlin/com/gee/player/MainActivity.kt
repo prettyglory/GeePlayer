@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Size
@@ -27,6 +28,7 @@ class MainActivity : FlutterActivity() {
     private val scanExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var playbackDescriptor: ParcelFileDescriptor? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -76,6 +78,30 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         } catch (error: Exception) {
                             result.error("settings_unavailable", error.message, null)
+                        }
+                    }
+                    "openPlayback" -> {
+                        try {
+                            val uri = Uri.parse(call.argument<String>("uri"))
+                            require(uri.scheme == "content" && uri.authority == "media") {
+                                "Expected a MediaStore content URI."
+                            }
+                            playbackDescriptor?.close()
+                            playbackDescriptor = null
+                            playbackDescriptor = contentResolver.openFileDescriptor(uri, "r")
+                                ?: throw IllegalStateException("Unable to open media file.")
+                            result.success("fd://${playbackDescriptor!!.fd}")
+                        } catch (error: Exception) {
+                            result.error("playback_open_failed", error.message, null)
+                        }
+                    }
+                    "closePlayback" -> {
+                        try {
+                            playbackDescriptor?.close()
+                            playbackDescriptor = null
+                            result.success(null)
+                        } catch (error: Exception) {
+                            result.error("playback_close_failed", error.message, null)
                         }
                     }
                     else -> result.notImplemented()
@@ -274,6 +300,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        playbackDescriptor?.close()
+        playbackDescriptor = null
         scanExecutor.shutdown()
         super.onDestroy()
     }
