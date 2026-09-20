@@ -10,12 +10,16 @@ class FakeMediaRepository implements LocalMediaRepository {
   LibrarySnapshot snapshot;
   final bool canImport;
   MediaKind? requestedKind;
+  int loadCount = 0;
 
   @override
   bool get supportsFileImport => canImport;
 
   @override
-  Future<LibrarySnapshot> loadLibrary() async => snapshot;
+  Future<LibrarySnapshot> loadLibrary() async {
+    loadCount++;
+    return snapshot;
+  }
 
   @override
   Future<MediaAccess> requestAccess({MediaKind? kind}) async {

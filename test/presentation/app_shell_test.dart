@@ -7,6 +7,25 @@ import 'package:gee_player/presentation/screens/app_shell.dart';
 import '../support/fake_media_repository.dart';
 
 void main() {
+  testWidgets('library refreshes when the app resumes', (tester) async {
+    final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const MaterialApp(home: AppShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final before = repository.loadCount;
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(repository.loadCount, greaterThan(before));
+  });
+
   testWidgets('phone navigation reaches every destination', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

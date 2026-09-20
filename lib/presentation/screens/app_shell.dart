@@ -1,20 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_colors.dart';
+import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/screens/media_library_screen.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   AppDestination _selected = AppDestination.home;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(mediaLibraryProvider);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   void _select(int index) {
     setState(() => _selected = AppDestination.values[index]);
