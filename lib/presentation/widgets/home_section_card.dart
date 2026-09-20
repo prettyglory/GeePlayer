@@ -8,6 +8,10 @@ class HomeSectionCard extends StatelessWidget {
     required this.message,
     required this.icon,
     this.onOpen,
+    this.previewTitles = const [],
+    this.status = MediaViewStatus.empty,
+    this.onAction,
+    this.actionLabel = 'Try again',
     super.key,
   });
 
@@ -15,6 +19,10 @@ class HomeSectionCard extends StatelessWidget {
   final String message;
   final IconData icon;
   final VoidCallback? onOpen;
+  final List<String> previewTitles;
+  final MediaViewStatus status;
+  final VoidCallback? onAction;
+  final String actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +57,40 @@ class HomeSectionCard extends StatelessWidget {
               ],
             ),
           ),
-          MediaStatePanel(
-            status: MediaViewStatus.empty,
-            message: message,
-            icon: icon,
-            compact: true,
-          ),
+          if (previewTitles.isEmpty)
+            MediaStatePanel(
+              status: status,
+              message: message,
+              icon: icon,
+              onRetry: onAction,
+              actionLabel: actionLabel,
+              compact: true,
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+              child: Column(
+                children: [
+                  for (final title in previewTitles)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 17, color: GeeColors.textMuted),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
     );

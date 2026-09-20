@@ -1,16 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_colors.dart';
+import 'package:gee_player/app/media_library_providers.dart';
+import 'package:gee_player/domain/media/library_snapshot.dart';
+import 'package:gee_player/domain/media/local_media.dart';
+import 'package:gee_player/domain/media/media_library_query.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 import 'package:gee_player/presentation/widgets/home_section_card.dart';
+import 'package:gee_player/presentation/widgets/media_state_panel.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({required this.onNavigate, super.key});
 
   final ValueChanged<AppDestination> onNavigate;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final library = ref.watch(mediaLibraryProvider);
+    final snapshot = library.value;
+    final videos = snapshot == null
+        ? <LocalMedia>[]
+        : MediaLibraryQuery.searchAndSort(
+            snapshot.videos,
+            query: '',
+            sort: MediaSort.newest,
+          );
+    final music = snapshot == null
+        ? <LocalMedia>[]
+        : MediaLibraryQuery.searchAndSort(
+            snapshot.music,
+            query: '',
+            sort: MediaSort.newest,
+          );
+    final folders = snapshot?.folders ?? [];
+    final status = library.isLoading
+        ? MediaViewStatus.loading
+        : library.hasError
+        ? MediaViewStatus.error
+        : MediaViewStatus.empty;
+    final videoDenied = snapshot?.access.videos == MediaAccessLevel.denied;
+    final audioDenied = snapshot?.access.audio == MediaAccessLevel.denied;
+
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -26,7 +57,10 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _HomeHeader(),
+                    _HomeHeader(
+                      onRefresh: () =>
+                          ref.read(mediaLibraryProvider.notifier).refresh(),
+                    ),
                     const SizedBox(height: 28),
                     const _HomeHero(),
                     const SizedBox(height: 28),
@@ -69,27 +103,87 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         HomeSectionCard(
                           title: 'Recently added videos',
-                          message:
-                              'Videos found on your device will appear here.',
+                          message: library.hasError
+                              ? 'Could not load your videos.'
+                              : videoDenied
+                              ? 'Allow video access to discover your videos.'
+                              : 'No videos found yet.',
                           icon: Icons.movie_outlined,
                           onOpen: () => onNavigate(AppDestination.videos),
+                          previewTitles: videos
+                              .take(3)
+                              .map((item) => item.title)
+                              .toList(),
+                          status: status,
+                          actionLabel: videoDenied
+                              ? 'Allow access'
+                              : 'Try again',
+                          onAction: videoDenied
+                              ? () => ref
+                                    .read(mediaLibraryProvider.notifier)
+                                    .requestAccess(kind: MediaKind.video)
+                              : library.hasError
+                              ? () => ref
+                                    .read(mediaLibraryProvider.notifier)
+                                    .refresh()
+                              : null,
                         ),
                         HomeSectionCard(
                           title: 'Recently added music',
-                          message:
-                              'Songs found on your device will appear here.',
+                          message: library.hasError
+                              ? 'Could not load your music.'
+                              : audioDenied
+                              ? 'Allow audio access to discover your music.'
+                              : 'No music found yet.',
                           icon: Icons.music_note_outlined,
                           onOpen: () => onNavigate(AppDestination.music),
+                          previewTitles: music
+                              .take(3)
+                              .map((item) => item.title)
+                              .toList(),
+                          status: status,
+                          actionLabel: audioDenied
+                              ? 'Allow access'
+                              : 'Try again',
+                          onAction: audioDenied
+                              ? () => ref
+                                    .read(mediaLibraryProvider.notifier)
+                                    .requestAccess(kind: MediaKind.audio)
+                              : library.hasError
+                              ? () => ref
+                                    .read(mediaLibraryProvider.notifier)
+                                    .refresh()
+                              : null,
                         ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     HomeSectionCard(
                       title: 'Media folders',
-                      message:
-                          'Your accessible media folders will appear here.',
+                      message: library.hasError
+                          ? 'Could not load your folders.'
+                          : videoDenied && audioDenied
+                          ? 'Allow media access to discover folders.'
+                          : 'No media folders found yet.',
                       icon: Icons.folder_outlined,
                       onOpen: () => onNavigate(AppDestination.folders),
+                      previewTitles: folders
+                          .take(3)
+                          .map((folder) => folder.name)
+                          .toList(),
+                      status: status,
+                      actionLabel: videoDenied && audioDenied
+                          ? 'Allow access'
+                          : 'Try again',
+                      onAction: videoDenied && audioDenied
+                          ? () => ref
+                                .read(mediaLibraryProvider.notifier)
+                                .requestAccess()
+                          : library.hasError
+                          ? () => ref
+                                .read(mediaLibraryProvider.notifier)
+                                .refresh()
+                          : null,
                     ),
                   ],
                 ),
@@ -103,7 +197,9 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader();
+  const _HomeHeader({required this.onRefresh});
+
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -111,19 +207,32 @@ class _HomeHeader extends StatelessWidget {
       children: [
         const GeeLogo(size: 42),
         const SizedBox(width: 13),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gee Player',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.4),
-            ),
-            const Text(
-              'Your media, your moment.',
-              style: TextStyle(color: GeeColors.textMuted, fontSize: 12),
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gee Player',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const Text(
+                'Your media, your moment.',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: GeeColors.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Refresh library',
+          onPressed: onRefresh,
+          icon: const Icon(Icons.refresh_rounded),
         ),
       ],
     );

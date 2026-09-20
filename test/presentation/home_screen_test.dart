@@ -2,12 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gee_player/app/media_library_providers.dart';
+import 'package:gee_player/domain/media/library_snapshot.dart';
+import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
 import 'package:gee_player/presentation/widgets/media_state_panel.dart';
 
 import '../support/fake_media_repository.dart';
 
 void main() {
+  testWidgets('home previews discovered media and folders', (tester) async {
+    final repository = FakeMediaRepository(
+      snapshot: const LibrarySnapshot(
+        items: [
+          LocalMedia(
+            id: 'video:1',
+            kind: MediaKind.video,
+            uri: 'content://video/1',
+            fileName: 'Trip.mp4',
+            folderPath: 'Movies/Travel',
+          ),
+          LocalMedia(
+            id: 'audio:1',
+            kind: MediaKind.audio,
+            uri: 'content://audio/1',
+            fileName: 'Song.mp3',
+            folderPath: 'Music',
+          ),
+        ],
+        access: MediaAccess(
+          videos: MediaAccessLevel.granted,
+          audio: MediaAccessLevel.granted,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const MaterialApp(home: AppShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trip'), findsOneWidget);
+    expect(find.text('Song'), findsOneWidget);
+    expect(find.text('Travel'), findsOneWidget);
+  });
+
   testWidgets('home shows all media sections and opens a library tab', (
     tester,
   ) async {

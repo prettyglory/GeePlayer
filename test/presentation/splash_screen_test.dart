@@ -1,14 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_player_app.dart';
+import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
 import 'package:gee_player/presentation/screens/splash_screen.dart';
+
+import '../support/fake_media_repository.dart';
 
 void main() {
   testWidgets('the branded splash hands off to the application', (
     tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: GeePlayerApp()));
+    final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const GeePlayerApp(),
+      ),
+    );
 
     expect(find.byType(SplashScreen), findsOneWidget);
     expect(find.text('Gee Player'), findsOneWidget);
