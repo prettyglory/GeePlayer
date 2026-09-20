@@ -4,7 +4,14 @@ Gee Player is a Flutter application for playing locally stored video and music o
 
 ## Project status
 
-Phase 1 establishes the Flutter project, native application identifiers, and source layout. The app currently opens a placeholder screen. Media discovery, playback, subtitles, playlists, settings, and the final design have not been implemented.
+Phases 1 and 2 are complete. Gee Player now has native app icons and launch screens, an animated splash, a dark theme, responsive Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. The Home dashboard shows honest empty states until local media discovery is implemented. The other destinations currently explain when their features will be added. Media discovery, playback, subtitles, playlists, and functional settings are planned for later phases.
+
+## Current interface
+
+- Phone layouts use bottom navigation. Wider layouts use a scrollable navigation rail.
+- Home provides quick links and sections for Continue watching, Recently played, Recently added videos, Recently added music, and Media folders.
+- Reusable media state widgets support loading, empty, and error messages with an optional retry action.
+- Native Android and iOS branding assets can be regenerated on Windows with `powershell -NoProfile -ExecutionPolicy Bypass -File .\tool\generate_brand_assets.ps1`.
 
 ## Planned technology
 
@@ -42,11 +49,11 @@ Connect an Android phone with USB debugging enabled or start an Android emulator
 
 ## Quality checks
 
-Run `flutter analyze` after changes. A development APK can be built with `flutter build apk --debug`; this Phase 1 build has been verified on Windows. Automated tests will be added with the features they verify and run with `flutter test`. Release signing and release builds will be verified in a later phase.
+Run `flutter analyze` and `flutter test` after changes. Widget tests cover splash handoff, responsive navigation, Home sections, and the error retry action. A development APK can be built with `flutter build apk --debug`; release signing and release builds will be verified in a later phase.
 
 ## API configuration
 
-The SubDL integration and Settings screen are planned for later phases. No API key is required for this placeholder app. When implemented, users will enter their own key in Settings; keys must not be committed to Git or packaged into the app. A key stored on a client device cannot be completely secret from a determined attacker.
+The SubDL integration and functional Settings screen are planned for later phases. No API key is required for the current interface. When implemented, users will enter their own key in Settings; keys must not be committed to Git or packaged into the app. A key stored on a client device cannot be completely secret from a determined attacker.
 
 ## Builds and platform notes
 
@@ -56,4 +63,4 @@ Building and signing the iOS application requires macOS with Xcode or a compatib
 
 ## Known limitations
 
-The current screen is a placeholder. Android and iOS codec support, media access, background playback, subtitles, and provider behavior remain to be implemented and verified in their respective phases.
+The current interface does not yet scan or play media. Android and iOS codec support, media access, background playback, subtitles, and provider behavior remain to be implemented and verified in their respective phases. Native iOS launch assets have been prepared, but the iOS build and on-device appearance have not been verified on Windows.
