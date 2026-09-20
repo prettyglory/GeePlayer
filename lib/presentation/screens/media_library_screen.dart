@@ -6,6 +6,7 @@ import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/domain/media/media_library_query.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
+import 'package:gee_player/presentation/screens/playback_screen.dart';
 import 'package:gee_player/presentation/widgets/media_list_tile.dart';
 import 'package:gee_player/presentation/widgets/media_state_panel.dart';
 
@@ -217,7 +218,17 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
                     itemCount: isFolders ? folders.length : filtered.length,
                     itemBuilder: (context, index) => isFolders
                         ? _FolderTile(folder: folders[index])
-                        : MediaListTile(media: filtered[index]),
+                        : MediaListTile(
+                            media: filtered[index],
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => PlaybackScreen(
+                                  queue: filtered,
+                                  index: index,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
           ),
         ),
@@ -378,8 +389,23 @@ class _FolderContentsScreen extends StatelessWidget {
         child: ListView.builder(
           padding: const EdgeInsets.all(20),
           itemCount: folder.items.length,
-          itemBuilder: (context, index) =>
-              MediaListTile(media: folder.items[index]),
+          itemBuilder: (context, index) => MediaListTile(
+            media: folder.items[index],
+            onTap: () {
+              final selected = folder.items[index];
+              final queue = folder.items
+                  .where((item) => item.kind == selected.kind)
+                  .toList();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PlaybackScreen(
+                    queue: queue,
+                    index: queue.indexOf(selected),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
