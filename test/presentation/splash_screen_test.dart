@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_player_app.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
 import 'package:gee_player/presentation/screens/splash_screen.dart';
@@ -7,7 +8,7 @@ void main() {
   testWidgets('the branded splash hands off to the application', (
     tester,
   ) async {
-    await tester.pumpWidget(const GeePlayerApp());
+    await tester.pumpWidget(const ProviderScope(child: GeePlayerApp()));
 
     expect(find.byType(SplashScreen), findsOneWidget);
     expect(find.text('Gee Player'), findsOneWidget);

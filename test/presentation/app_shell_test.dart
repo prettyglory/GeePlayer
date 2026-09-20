@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
+
+import '../support/fake_media_repository.dart';
 
 void main() {
   testWidgets('phone navigation reaches every destination', (tester) async {
@@ -9,22 +13,21 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: AppShell()));
+    final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const MaterialApp(home: AppShell()),
+      ),
+    );
     expect(find.byType(NavigationBar), findsOneWidget);
 
     for (final (icon, message) in [
-      (
-        Icons.movie_outlined,
-        'Your local videos will appear here once media discovery is ready.',
-      ),
-      (
-        Icons.music_note_outlined,
-        'Your local music will appear here once media discovery is ready.',
-      ),
-      (
-        Icons.folder_outlined,
-        'Browse your accessible media folders here in the next phase.',
-      ),
+      (Icons.movie_outlined, 'No videos found yet.'),
+      (Icons.music_note_outlined, 'No music found yet.'),
+      (Icons.folder_outlined, 'No media folders found yet.'),
       (
         Icons.favorite_border_rounded,
         'Media you mark as a favorite will appear here.',
@@ -46,17 +49,20 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: AppShell()));
+    final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const MaterialApp(home: AppShell()),
+      ),
+    );
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
 
     await tester.tap(find.byIcon(Icons.movie_outlined).first);
     await tester.pumpAndSettle();
-    expect(
-      find.text(
-        'Your local videos will appear here once media discovery is ready.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('No videos found yet.'), findsOneWidget);
   });
 }

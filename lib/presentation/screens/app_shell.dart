@@ -3,6 +3,7 @@ import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
+import 'package:gee_player/presentation/screens/media_library_screen.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 
 class AppShell extends StatefulWidget {
@@ -31,10 +32,18 @@ class _AppShellState extends State<AppShell> {
                   key: const ValueKey(AppDestination.home),
                   onNavigate: (destination) => _select(destination.index),
                 )
-              : FeaturePreviewScreen(
-                  key: ValueKey(_selected),
-                  destination: _selected,
-                ),
+              : switch (_selected) {
+                  AppDestination.videos ||
+                  AppDestination.music ||
+                  AppDestination.folders => MediaLibraryScreen(
+                    key: ValueKey(_selected),
+                    destination: _selected,
+                  ),
+                  _ => FeaturePreviewScreen(
+                    key: ValueKey(_selected),
+                    destination: _selected,
+                  ),
+                },
         );
 
         return Scaffold(

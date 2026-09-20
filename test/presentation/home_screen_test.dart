@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
 import 'package:gee_player/presentation/widgets/media_state_panel.dart';
+
+import '../support/fake_media_repository.dart';
 
 void main() {
   testWidgets('home shows all media sections and opens a library tab', (
@@ -12,7 +16,15 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: AppShell()));
+    final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+        ],
+        child: const MaterialApp(home: AppShell()),
+      ),
+    );
 
     for (final title in [
       'Continue watching',
@@ -26,12 +38,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('quick-videos')));
     await tester.pumpAndSettle();
-    expect(
-      find.text(
-        'Your local videos will appear here once media discovery is ready.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('No videos found yet.'), findsOneWidget);
   });
 
   testWidgets('media state panel gives a retry action for errors', (

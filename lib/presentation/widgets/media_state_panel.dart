@@ -9,6 +9,7 @@ class MediaStatePanel extends StatelessWidget {
     required this.message,
     this.icon,
     this.onRetry,
+    this.actionLabel = 'Try again',
     this.compact = false,
     super.key,
   });
@@ -17,6 +18,7 @@ class MediaStatePanel extends StatelessWidget {
   final String message;
   final IconData? icon;
   final VoidCallback? onRetry;
+  final String actionLabel;
   final bool compact;
 
   @override
@@ -52,12 +54,12 @@ class MediaStatePanel extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: GeeColors.textMuted, height: 1.4),
             ),
-            if (status == MediaViewStatus.error && onRetry != null) ...[
+            if (onRetry != null) ...[
               const SizedBox(height: 14),
               TextButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try again'),
+                label: Text(actionLabel),
               ),
             ],
           ],
