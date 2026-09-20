@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gee_player/data/media/android_media_repository.dart';
 import 'package:gee_player/domain/media/library_snapshot.dart';
+import 'package:gee_player/domain/media/local_media.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +65,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
             expect(call.method, 'requestAccess');
+            expect(call.arguments, {'kind': 'audio'});
             return {'videoAccess': 'denied', 'audioAccess': 'granted'};
           });
       addTearDown(
@@ -72,7 +74,7 @@ void main() {
       );
 
       final access = await AndroidMediaRepository(channel: channel)
-          .requestAccess();
+          .requestAccess(kind: MediaKind.audio);
 
       expect(access.canReadVideos, isFalse);
       expect(access.canReadAudio, isTrue);

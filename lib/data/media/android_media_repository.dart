@@ -32,9 +32,10 @@ class AndroidMediaRepository implements LocalMediaRepository {
   }
 
   @override
-  Future<MediaAccess> requestAccess() async {
+  Future<MediaAccess> requestAccess({MediaKind? kind}) async {
     final response = await _channel.invokeMapMethod<String, dynamic>(
       'requestAccess',
+      {'kind': kind?.name ?? 'both'},
     );
     if (response == null) throw const FormatException('No permission result.');
     return _accessFrom(response);

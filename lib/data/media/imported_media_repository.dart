@@ -88,10 +88,11 @@ class ImportedMediaRepository implements LocalMediaRepository {
   }
 
   @override
-  Future<MediaAccess> requestAccess() async => const MediaAccess(
-    videos: MediaAccessLevel.notRequired,
-    audio: MediaAccessLevel.notRequired,
-  );
+  Future<MediaAccess> requestAccess({MediaKind? kind}) async =>
+      const MediaAccess(
+        videos: MediaAccessLevel.notRequired,
+        audio: MediaAccessLevel.notRequired,
+      );
 
   @override
   Future<int> importFiles() async {

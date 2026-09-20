@@ -42,7 +42,10 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
-                    "requestAccess" -> requestMediaAccess(result)
+                    "requestAccess" -> requestMediaAccess(
+                        result,
+                        call.argument<String>("kind") ?: "both",
+                    )
                     else -> result.notImplemented()
                 }
             }
@@ -71,7 +74,7 @@ class MainActivity : FlutterActivity() {
         return mapOf("videoAccess" to level, "audioAccess" to level)
     }
 
-    private fun requestMediaAccess(result: MethodChannel.Result) {
+    private fun requestMediaAccess(result: MethodChannel.Result, kind: String) {
         if (pendingPermissionResult != null) {
             result.error("permission_in_progress", "A media permission request is already open.", null)
             return
@@ -79,16 +82,18 @@ class MainActivity : FlutterActivity() {
 
         val access = accessResult()
         val missing = mutableListOf<String>()
+        val needsVideo = kind == "video" || kind == "both"
+        val needsAudio = kind == "audio" || kind == "both"
         if (Build.VERSION.SDK_INT >= 34) {
-            if (access["videoAccess"] != "granted") {
+            if (needsVideo && access["videoAccess"] != "granted") {
                 missing += Manifest.permission.READ_MEDIA_VIDEO
                 missing += Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
             }
-            if (access["audioAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_AUDIO
+            if (needsAudio && access["audioAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_AUDIO
         } else if (Build.VERSION.SDK_INT >= 33) {
-            if (access["videoAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_VIDEO
-            if (access["audioAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_AUDIO
-        } else if (access["videoAccess"] != "granted") {
+            if (needsVideo && access["videoAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_VIDEO
+            if (needsAudio && access["audioAccess"] != "granted") missing += Manifest.permission.READ_MEDIA_AUDIO
+        } else if ((needsVideo || needsAudio) && access["videoAccess"] != "granted") {
             missing += Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
