@@ -4,12 +4,16 @@ Gee Player is a Flutter application for playing locally stored video and music o
 
 ## Project status
 
-Phases 1 and 2 are complete. Gee Player now has native app icons and launch screens, an animated splash, a dark theme, responsive Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. The Home dashboard shows honest empty states until local media discovery is implemented. The other destinations currently explain when their features will be added. Media discovery, playback, subtitles, playlists, and functional settings are planned for later phases.
+The Phase 3 media library implementation is in place. Gee Player has branded launch screens, a dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. On iOS, users choose video and audio files with the system picker; Gee Player copies supported files into its own app storage. Playback, subtitles, playlists, favorites, history, and functional settings are planned for later phases.
 
 ## Current interface
 
 - Phone layouts use bottom navigation. Wider layouts use a scrollable navigation rail.
-- Home provides quick links and sections for Continue watching, Recently played, Recently added videos, Recently added music, and Media folders.
+- Home previews recently added videos, music, and folders from the current library. Continue watching and Recently played will use playback history in later phases.
+- Videos and Music show title, format, duration when available, file size, and folder. Search covers title, artist, and folder; sorting supports date added, name, duration, and size.
+- Folders group accessible media and open a list of their contents. Android tiles display video thumbnails and embedded audio artwork when available.
+- Android permission requests are scoped to video or audio. The UI handles denial, partial video access, retry, and a link to Android App Settings. The library refreshes when the app returns to the foreground.
+- iOS provides an Import media action and keeps selected files in app support storage for later launches.
 - Reusable media state widgets support loading, empty, and error messages with an optional retry action.
 - Native Android and iOS branding assets can be regenerated on Windows with `powershell -NoProfile -ExecutionPolicy Bypass -File .\tool\generate_brand_assets.ps1`.
 
@@ -20,9 +24,10 @@ Phases 1 and 2 are complete. Gee Player now has native app icons and launch scre
 - Dio for subtitle network requests.
 - Drift with SQLite for structured local data.
 - `shared_preferences` for non-sensitive settings and `flutter_secure_storage` for a user-provided SubDL API key.
-- `flutter_riverpod` for state management and dependency injection as features are added. Its async state handling and provider overrides fit the media library, playback, and subtitle services.
+- `flutter_riverpod` 3.4.3 for asynchronous library state and dependency injection.
+- `file_selector` 1.1.0 for user-selected iOS files, and `path_provider` 2.1.6 for app support storage.
 
-These packages have not been added yet. Versions, licenses, maintenance, and platform support will be checked before each is installed.
+The playback, network, database, and settings packages above have not been added yet. Their versions, licenses, maintenance, and platform support will be checked before installation. The installed packages were checked against their [Riverpod](https://pub.dev/packages/flutter_riverpod), [file_selector](https://pub.dev/packages/file_selector), and [path_provider](https://pub.dev/packages/path_provider) package pages on 2026-09-20.
 
 ## Source layout
 
@@ -40,16 +45,26 @@ Install the Flutter SDK, the Flutter and Dart VS Code extensions, and the Androi
 
 ```powershell
 flutter doctor -v
-flutter doctor --android-licenses
 flutter pub get
 flutter devices
 ```
 
 Connect an Android phone with USB debugging enabled or start an Android emulator, then run `flutter run`. A connected Android device is not required to edit or analyze the project.
 
+## Android device check for Phase 3
+
+With a phone or emulator connected, run `flutter devices` and `flutter run -d DEVICE_ID`. On the device:
+
+1. Open Videos, grant video access, and confirm local videos and folders appear. Open Music separately to grant audio access.
+2. Try search and all four sort choices, then open a folder to inspect its files.
+3. Deny access, use App settings to grant it, return to Gee Player, and confirm the library refreshes.
+4. Add or delete a media file outside Gee Player, return to the app, and confirm the list updates. On Android 14 or later, also test access to selected videos only.
+
+These steps still need a connected device; they have not been run in the current Windows environment.
+
 ## Quality checks
 
-Run `flutter analyze` and `flutter test` after changes. Widget tests cover splash handoff, responsive navigation, Home sections, and the error retry action. A development APK can be built with `flutter build apk --debug`; release signing and release builds will be verified in a later phase.
+Run `flutter analyze` and `flutter test` after changes. Tests cover media mapping, import persistence, search and sorting, permissions, folder navigation, Home previews, and foreground refresh. A development APK can be built with `flutter build apk --debug`; release signing and release builds will be verified in a later phase.
 
 ## API configuration
 
@@ -63,4 +78,8 @@ Building and signing the iOS application requires macOS with Xcode or a compatib
 
 ## Known limitations
 
-The current interface does not yet scan or play media. Android and iOS codec support, media access, background playback, subtitles, and provider behavior remain to be implemented and verified in their respective phases. Native iOS launch assets have been prepared, but the iOS build and on-device appearance have not been verified on Windows.
+- Media list entries do not play files yet. Playback and resume controls are Phase 4 work; local subtitle discovery and loading are Phase 5 work.
+- Android MediaStore shows indexed video and audio that the user has granted access to. Android 14 and later can grant access to selected videos only. [Android media access](https://developer.android.com/training/data-storage/shared/media) and [partial video access](https://developer.android.com/about/versions/14/changes/partial-photo-video-access) explain these platform rules. Files outside the indexed collections and subtitle files are not included in this scan.
+- iOS has no automatic device-wide media scan. The picker copies selected files into Gee Player storage, which uses additional space. The current iOS library has one virtual Imported media folder and uses file modification time for its date. Duration and artwork are not extracted from imported iOS files yet; a format icon is shown instead. [file_selector's platform support](https://pub.dev/packages/file_selector) does not include iOS directory picking.
+- Video thumbnails and embedded audio artwork are best effort on Android. Files without readable artwork show a format icon. Codec support and playback behavior have not been verified.
+- Android debug compilation and automated tests passed on Windows. No Android device or emulator was available for runtime testing. The iOS project and file import path have not been built or tested on iPhone because this Windows environment cannot run Xcode.
