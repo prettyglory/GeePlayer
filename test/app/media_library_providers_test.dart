@@ -33,9 +33,6 @@ class _FakeMediaRepository implements LocalMediaRepository {
   MediaKind? requestedKind;
 
   @override
-  bool get supportsFileImport => false;
-
-  @override
   Future<LibrarySnapshot> loadLibrary() async => LibrarySnapshot(
     items: requestedKind == null
         ? []
@@ -62,9 +59,6 @@ class _FakeMediaRepository implements LocalMediaRepository {
       audio: MediaAccessLevel.denied,
     );
   }
-
-  @override
-  Future<int> importFiles() => throw UnimplementedError();
 
   @override
   Future<void> openAppSettings() async {}

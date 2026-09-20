@@ -35,26 +35,9 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
     _ => null,
   };
 
-  Future<void> _import() async {
-    final count = await ref.read(mediaLibraryProvider.notifier).importFiles();
-    if (!mounted || count == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          count == 0
-              ? 'No supported video or audio files were selected.'
-              : 'Imported $count media ${count == 1 ? 'file' : 'files'}.',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final library = ref.watch(mediaLibraryProvider);
-    final canImport = ref
-        .watch(localMediaRepositoryProvider)
-        .supportsFileImport;
 
     return SafeArea(
       child: Column(
@@ -75,12 +58,6 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
                       ref.read(mediaLibraryProvider.notifier).refresh(),
                   icon: const Icon(Icons.refresh_rounded),
                 ),
-                if (canImport)
-                  IconButton(
-                    tooltip: 'Import media files',
-                    onPressed: _import,
-                    icon: const Icon(Icons.add_rounded),
-                  ),
               ],
             ),
           ),
@@ -94,7 +71,7 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
             ),
           Expanded(
             child: switch (library) {
-              AsyncData(:final value) => _buildLibrary(value, canImport),
+              AsyncData(:final value) => _buildLibrary(value),
               AsyncError() => MediaStatePanel(
                 status: MediaViewStatus.error,
                 message:
@@ -113,14 +90,14 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
     );
   }
 
-  Widget _buildLibrary(LibrarySnapshot snapshot, bool canImport) {
+  Widget _buildLibrary(LibrarySnapshot snapshot) {
     final access = snapshot.access;
     if (access.videos == MediaAccessLevel.unsupported &&
         access.audio == MediaAccessLevel.unsupported) {
       return const MediaStatePanel(
         status: MediaViewStatus.empty,
         icon: Icons.phone_android_rounded,
-        message: 'Local media discovery is available on Android and iOS.',
+        message: 'Local media discovery is available on Android.',
       );
     }
 
@@ -206,10 +183,6 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
                             : widget.destination == AppDestination.videos
                             ? 'No videos found yet.'
                             : 'No music found yet.',
-                        actionLabel: 'Import media',
-                        onRetry: canImport && query.trim().isEmpty
-                            ? _import
-                            : null,
                       ),
                     ],
                   )

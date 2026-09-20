@@ -30,20 +30,10 @@ void main() {
           .setMockMethodCallHandler(channel, null),
     );
 
-    final source = await const PlaybackSourceResolver(
-      channel: channel,
-      platform: TargetPlatform.android,
-    ).resolve(media);
+    final source = await const PlaybackSourceResolver(channel: channel)
+        .resolve(media);
     expect(source.uri, 'fd://42');
     await source.close();
     expect(calls, ['openPlayback', 'closePlayback']);
-  });
-
-  test('iOS uses the imported file URL directly', () async {
-    final source = await const PlaybackSourceResolver(
-      platform: TargetPlatform.iOS,
-    ).resolve(media);
-    expect(source.uri, media.uri);
-    await source.close();
   });
 }

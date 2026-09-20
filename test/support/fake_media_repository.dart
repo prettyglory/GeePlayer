@@ -5,16 +5,12 @@ import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/domain/media/local_media_repository.dart';
 
 class FakeMediaRepository implements LocalMediaRepository {
-  FakeMediaRepository({required this.snapshot, this.canImport = false});
+  FakeMediaRepository({required this.snapshot});
 
   LibrarySnapshot snapshot;
-  final bool canImport;
   MediaKind? requestedKind;
   int loadCount = 0;
   int openSettingsCount = 0;
-
-  @override
-  bool get supportsFileImport => canImport;
 
   @override
   Future<LibrarySnapshot> loadLibrary() async {
@@ -27,9 +23,6 @@ class FakeMediaRepository implements LocalMediaRepository {
     requestedKind = kind;
     return snapshot.access;
   }
-
-  @override
-  Future<int> importFiles() async => 0;
 
   @override
   Future<void> openAppSettings() async {

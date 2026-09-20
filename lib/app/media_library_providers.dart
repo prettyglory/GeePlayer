@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/data/media/android_media_repository.dart';
-import 'package:gee_player/data/media/imported_media_repository.dart';
 import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/domain/media/local_media_repository.dart';
@@ -10,7 +9,6 @@ final localMediaRepositoryProvider = Provider<LocalMediaRepository>((ref) {
   if (kIsWeb) return const _UnsupportedMediaRepository();
   return switch (defaultTargetPlatform) {
     TargetPlatform.android => AndroidMediaRepository(),
-    TargetPlatform.iOS => ImportedMediaRepository(),
     _ => const _UnsupportedMediaRepository(),
   };
 });
@@ -41,17 +39,6 @@ class MediaLibraryController extends AsyncNotifier<LibrarySnapshot> {
       return repository.loadLibrary();
     });
   }
-
-  Future<int?> importFiles() async {
-    int? imported;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(localMediaRepositoryProvider);
-      imported = await repository.importFiles();
-      return repository.loadLibrary();
-    });
-    return state.hasError ? null : imported;
-  }
 }
 
 class _UnsupportedMediaRepository implements LocalMediaRepository {
@@ -63,9 +50,6 @@ class _UnsupportedMediaRepository implements LocalMediaRepository {
   );
 
   @override
-  bool get supportsFileImport => false;
-
-  @override
   Future<LibrarySnapshot> loadLibrary() async =>
       const LibrarySnapshot(items: [], access: _access);
 
@@ -74,10 +58,6 @@ class _UnsupportedMediaRepository implements LocalMediaRepository {
 
   @override
   Future<void> openAppSettings() async {}
-
-  @override
-  Future<int> importFiles() =>
-      throw UnsupportedError('Media import is available on iOS.');
 
   @override
   Future<Uint8List?> loadArtwork(LocalMedia media) async => null;

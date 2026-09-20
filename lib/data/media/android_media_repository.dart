@@ -11,9 +11,6 @@ class AndroidMediaRepository implements LocalMediaRepository {
   final Map<String, Future<Uint8List?>> _artworkCache = {};
 
   @override
-  bool get supportsFileImport => false;
-
-  @override
   Future<LibrarySnapshot> loadLibrary() async {
     final response = await _channel.invokeMapMethod<String, dynamic>('scan');
     if (response == null) throw const FormatException('No media scan result.');
@@ -41,10 +38,6 @@ class AndroidMediaRepository implements LocalMediaRepository {
     if (response == null) throw const FormatException('No permission result.');
     return _accessFrom(response);
   }
-
-  @override
-  Future<int> importFiles() =>
-      throw UnsupportedError('Android media is discovered through MediaStore.');
 
   @override
   Future<void> openAppSettings() => _channel.invokeMethod<void>('openSettings');
