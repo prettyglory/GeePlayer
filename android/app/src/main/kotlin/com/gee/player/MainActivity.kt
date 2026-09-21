@@ -20,21 +20,24 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Size
 import android.util.Rational
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.Executors
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
+    companion object {
+        private var playbackDescriptor: ParcelFileDescriptor? = null
+    }
+
     private val channelName = "com.gee.player/media_library"
     private val controlsChannelName = "com.gee.player/player_controls"
     private val permissionRequestCode = 4817
     private val scanExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingPermissionResult: MethodChannel.Result? = null
-    private var playbackDescriptor: ParcelFileDescriptor? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -455,8 +458,6 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
-        playbackDescriptor?.close()
-        playbackDescriptor = null
         scanExecutor.shutdown()
         super.onDestroy()
     }

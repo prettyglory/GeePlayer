@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   archive: 4.3.0
+  audio_service: 0.18.19
+  audio_session: 0.2.4
   crypto: 3.0.7
   dio: 5.11.1
   drift: 2.35.0

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:gee_player/app/background_audio_handler.dart';
 import 'package:gee_player/data/playback/playback_database.dart';
 import 'package:gee_player/data/playback/playback_source_resolver.dart';
 import 'package:gee_player/domain/media/local_media.dart';
@@ -11,12 +12,16 @@ import 'package:media_kit_video/media_kit_video.dart';
 enum PlaybackRepeatMode { off, one, all }
 
 /// Coordinates one media session and its persisted resume position.
-class PlaybackController extends ChangeNotifier {
+class PlaybackController extends ChangeNotifier
+    implements AudioPlaybackDelegate {
   PlaybackController(
     this._database,
     this._sourceResolver, {
+    this.audioHandler,
     this.onHistoryChanged,
-  });
+  }) {
+    audioHandler?.bind(this);
+  }
 
   void _initializePlayer() {
     if (_initialized) return;
@@ -62,17 +67,24 @@ class PlaybackController extends ChangeNotifier {
 
   final PlaybackDatabase _database;
   final PlaybackSourceResolver _sourceResolver;
+  final GeeAudioHandler? audioHandler;
   final VoidCallback? onHistoryChanged;
   late final Player player;
   late final VideoController videoController;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   PlaybackSourceLease? _source;
+  @override
   List<LocalMedia> queue = const [];
+  @override
   int index = 0;
+  @override
   LocalMedia? current;
+  @override
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
+  @override
   bool playing = false;
+  @override
   bool loading = false;
   String? error;
   bool _completed = false;
@@ -89,6 +101,14 @@ class PlaybackController extends ChangeNotifier {
 
   bool get hasNext => index < queue.length - 1;
   bool get hasPrevious => index > 0;
+  @override
+  bool get completed => _completed;
+  @override
+  bool get shuffleEnabled => shuffle;
+  @override
+  bool get repeatOne => repeatMode == PlaybackRepeatMode.one;
+  @override
+  bool get repeatAll => repeatMode == PlaybackRepeatMode.all;
 
   Future<void> open(List<LocalMedia> items, int startIndex) async {
     if (loading || startIndex < 0 || startIndex >= items.length) return;
@@ -121,7 +141,10 @@ class PlaybackController extends ChangeNotifier {
         }
         await player.seek(saved);
       }
-      await player.play();
+      if (current!.kind != MediaKind.audio ||
+          await (audioHandler?.activate() ?? Future.value(true))) {
+        await player.play();
+      }
       try {
         await _database.recordPlayback(current!);
         onHistoryChanged?.call();
@@ -146,8 +169,21 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
-  Future<void> togglePlayPause() => player.playOrPause();
+  Future<void> togglePlayPause() => playing ? pause() : play();
 
+  @override
+  Future<void> play() async {
+    if (current?.kind == MediaKind.audio &&
+        !await (audioHandler?.activate() ?? Future.value(true))) {
+      return;
+    }
+    await player.play();
+  }
+
+  @override
+  Future<void> pause() => player.pause();
+
+  @override
   Future<void> seek(Duration target) async {
     final end = duration > Duration.zero ? duration : target;
     final safe = target < Duration.zero
@@ -161,6 +197,7 @@ class PlaybackController extends ChangeNotifier {
     await _savePosition();
   }
 
+  @override
   Future<void> skipBy(Duration offset) => seek(position + offset);
 
   Future<void> setRate(double rate) => player.setRate(rate);
@@ -198,6 +235,7 @@ class PlaybackController extends ChangeNotifier {
 
   Future<void> saveProgress() => _savePosition();
 
+  @override
   Future<void> next() async {
     if (queue.isEmpty) return;
     if (shuffle && queue.length > 1) {
@@ -213,6 +251,7 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> previous() async {
     if (position > const Duration(seconds: 3)) {
       await seek(Duration.zero);
@@ -223,6 +262,7 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> stop() async {
     if (loading) return;
     loading = true;
@@ -234,6 +274,7 @@ class PlaybackController extends ChangeNotifier {
       position = Duration.zero;
       duration = Duration.zero;
       playing = false;
+      await audioHandler?.deactivate();
     } finally {
       loading = false;
       _notify();
@@ -283,12 +324,16 @@ class PlaybackController extends ChangeNotifier {
   }
 
   void _notify() {
-    if (!_disposed) notifyListeners();
+    if (!_disposed) {
+      notifyListeners();
+      audioHandler?.sync();
+    }
   }
 
   @override
   void dispose() {
     _disposed = true;
+    audioHandler?.unbind(this);
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
