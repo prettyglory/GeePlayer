@@ -7,7 +7,10 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.app.PictureInPictureParams
+import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -16,6 +19,7 @@ import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Size
+import android.util.Rational
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -25,6 +29,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.gee.player/media_library"
+    private val controlsChannelName = "com.gee.player/player_controls"
     private val permissionRequestCode = 4817
     private val scanExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -33,6 +38,65 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, controlsChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getVolume" -> {
+                        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        val maximum = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                        val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        result.success(if (maximum == 0) 0.0 else current.toDouble() / maximum)
+                    }
+                    "setVolume" -> {
+                        val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        val maximum = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                        val value = (call.argument<Double>("value") ?: 0.0).coerceIn(0.0, 1.0)
+                        audio.setStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            (value * maximum).toInt(),
+                            0,
+                        )
+                        result.success(null)
+                    }
+                    "getBrightness" -> {
+                        val windowValue = window.attributes.screenBrightness
+                        val value = if (windowValue >= 0f) {
+                            windowValue.toDouble()
+                        } else {
+                            try {
+                                Settings.System.getInt(
+                                    contentResolver,
+                                    Settings.System.SCREEN_BRIGHTNESS,
+                                ) / 255.0
+                            } catch (_: Exception) {
+                                0.5
+                            }
+                        }
+                        result.success(value.coerceIn(0.0, 1.0))
+                    }
+                    "setBrightness" -> {
+                        val value = (call.argument<Double>("value") ?: 0.5)
+                            .coerceIn(0.01, 1.0)
+                        val attributes = window.attributes
+                        attributes.screenBrightness = value.toFloat()
+                        window.attributes = attributes
+                        result.success(null)
+                    }
+                    "enterPictureInPicture" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+                        ) {
+                            val params = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .build()
+                            result.success(enterPictureInPictureMode(params))
+                        } else {
+                            result.success(false)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {

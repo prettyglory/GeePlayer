@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,8 @@ import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
+import 'package:gee_player/data/playback/android_player_controls.dart';
+import 'package:gee_player/data/subtitles/subtitle_preferences.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 import 'package:gee_player/presentation/widgets/media_actions_button.dart';
@@ -25,6 +29,12 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   double? _dragPosition;
   double _aspectRatio = 16 / 9;
   bool _fullscreen = false;
+  bool _controlsLocked = false;
+  final _androidControls = const AndroidPlayerControls();
+  double? _gestureValue;
+  bool _gestureControlsVolume = false;
+  String? _gestureMessage;
+  Timer? _gestureTimer;
 
   void _showSubtitles() {
     final subtitles = ref.read(subtitleControllerProvider);
@@ -145,10 +155,58 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     ).whenComplete(searchController.dispose);
   }
 
+  void _showAudioTracks() {
+    final tracks = _controller.player.state.tracks.audio
+        .where((track) => track.id != 'no')
+        .toList();
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text(
+                'Audio track',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (tracks.isEmpty)
+              const ListTile(title: Text('No alternate audio tracks found.')),
+            for (final track in tracks)
+              ListTile(
+                leading: Icon(
+                  _controller.player.state.track.audio == track
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                ),
+                title: Text(
+                  track.id == 'auto'
+                      ? 'Automatic'
+                      : track.title ?? 'Track ${track.id}',
+                ),
+                subtitle: track.language == null ? null : Text(track.language!),
+                onTap: () {
+                  _controller.setAudioTrack(track);
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _controller = ref.read(playbackControllerProvider);
+    ref.read(subtitleAppearanceProvider.future).then((appearance) {
+      _controller.setSubtitleDelay(
+        Duration(milliseconds: appearance.delayMilliseconds),
+      );
+    });
     if (widget.queue != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -171,8 +229,54 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     if (mounted) setState(() => _fullscreen = next);
   }
 
+  Future<void> _toggleLock() async {
+    if (!_fullscreen && !_controlsLocked) await _toggleFullscreen();
+    if (mounted) setState(() => _controlsLocked = !_controlsLocked);
+  }
+
+  Future<void> _enterPictureInPicture() async {
+    await _androidControls.enterPictureInPicture();
+  }
+
+  void _showGestureMessage(String message) {
+    _gestureTimer?.cancel();
+    if (mounted) setState(() => _gestureMessage = message);
+    _gestureTimer = Timer(const Duration(milliseconds: 750), () {
+      if (mounted) setState(() => _gestureMessage = null);
+    });
+  }
+
+  void _doubleTap(Offset position, double width) {
+    final forward = position.dx >= width / 2;
+    _controller.skipBy(Duration(seconds: forward ? 10 : -10));
+    _showGestureMessage(forward ? '+10 seconds' : '-10 seconds');
+  }
+
+  Future<void> _verticalDragStart(Offset position, double width) async {
+    _gestureControlsVolume = position.dx >= width / 2;
+    final value = _gestureControlsVolume
+        ? await _androidControls.volume()
+        : await _androidControls.brightness();
+    if (mounted) setState(() => _gestureValue = value);
+  }
+
+  void _verticalDragUpdate(double delta, double height) {
+    final current = _gestureValue;
+    if (current == null || height <= 0) return;
+    final value = (current - delta / height).clamp(0.0, 1.0);
+    _gestureValue = value;
+    if (_gestureControlsVolume) {
+      _androidControls.setVolume(value);
+      _showGestureMessage('Volume ${(value * 100).round()}%');
+    } else {
+      _androidControls.setBrightness(value);
+      _showGestureMessage('Brightness ${(value * 100).round()}%');
+    }
+  }
+
   @override
   void dispose() {
+    _gestureTimer?.cancel();
     if (_fullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -187,6 +291,9 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   Widget build(BuildContext context) {
     final controller = ref.watch(playbackControllerProvider);
     final subtitles = ref.watch(subtitleControllerProvider);
+    final appearance =
+        ref.watch(subtitleAppearanceProvider).value ??
+        const SubtitleAppearance();
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -198,13 +305,13 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           body: media == null
               ? const Center(child: Text('Choose a video or song to play.'))
               : _fullscreen && media.kind == MediaKind.video
-              ? _fullscreenVideo(controller)
+              ? _fullscreenVideo(controller, appearance)
               : SafeArea(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                     children: [
                       if (media.kind == MediaKind.video)
-                        _videoSurface(controller)
+                        _videoSurface(controller, appearance)
                       else
                         Center(child: MediaArtwork(media: media, size: 220)),
                       if (!_fullscreen) ...[
@@ -274,62 +381,159 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     );
   }
 
-  Widget _videoSurface(PlaybackController controller) {
+  Widget _videoSurface(
+    PlaybackController controller,
+    SubtitleAppearance appearance,
+  ) {
     return Center(
       child: AspectRatio(
         aspectRatio: _aspectRatio,
-        child: Video(
-          controller: controller.videoController,
-          controls: NoVideoControls,
-          fit: BoxFit.contain,
-        ),
+        child: _interactiveVideo(controller, appearance),
       ),
     );
   }
 
-  Widget _fullscreenVideo(PlaybackController controller) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Video(
+  Widget _interactiveVideo(
+    PlaybackController controller,
+    SubtitleAppearance appearance,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        fit: StackFit.expand,
+        children: [
+          Video(
             controller: controller.videoController,
             controls: NoVideoControls,
             fit: BoxFit.contain,
-          ),
-        ),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton.filledTonal(
-                  tooltip: 'Subtitles',
-                  onPressed: _showSubtitles,
-                  icon: const Icon(Icons.closed_caption_rounded),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Exit fullscreen',
-                  onPressed: _toggleFullscreen,
-                  icon: const Icon(Icons.fullscreen_exit_rounded),
-                ),
-              ],
+            subtitleViewConfiguration: SubtitleViewConfiguration(
+              style: TextStyle(
+                height: 1.35,
+                fontSize: appearance.fontSize,
+                color: Color(appearance.textColor),
+                backgroundColor: Color(appearance.backgroundColor),
+                fontWeight: FontWeight.w600,
+              ),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, appearance.bottomPadding),
             ),
           ),
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: ColoredBox(
-            color: const Color(0xCC111827),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [_timeline(controller), _controls(controller)],
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onDoubleTapDown: _controlsLocked
+                  ? null
+                  : (details) =>
+                        _doubleTap(details.localPosition, constraints.maxWidth),
+              onVerticalDragStart: _controlsLocked
+                  ? null
+                  : (details) => _verticalDragStart(
+                      details.localPosition,
+                      constraints.maxWidth,
+                    ),
+              onVerticalDragUpdate: _controlsLocked
+                  ? null
+                  : (details) => _verticalDragUpdate(
+                      details.primaryDelta ?? 0,
+                      constraints.maxHeight,
+                    ),
+              onVerticalDragEnd: (_) => _gestureValue = null,
+            ),
+          ),
+          if (_gestureMessage != null)
+            Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    _gestureMessage!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fullscreenVideo(
+    PlaybackController controller,
+    SubtitleAppearance appearance,
+  ) {
+    return Stack(
+      children: [
+        Positioned.fill(child: _interactiveVideo(controller, appearance)),
+        if (_controlsLocked)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: IconButton.filledTonal(
+                tooltip: 'Unlock controls',
+                onPressed: _toggleLock,
+                icon: const Icon(Icons.lock_open_rounded),
               ),
             ),
           ),
-        ),
+        if (!_controlsLocked)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton.filledTonal(
+                    tooltip: 'Audio track',
+                    onPressed: _showAudioTracks,
+                    icon: const Icon(Icons.audiotrack_rounded),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Subtitles',
+                    onPressed: _showSubtitles,
+                    icon: const Icon(Icons.closed_caption_rounded),
+                  ),
+                  if (_androidControls.supported)
+                    IconButton.filledTonal(
+                      tooltip: 'Picture in Picture',
+                      onPressed: _enterPictureInPicture,
+                      icon: const Icon(Icons.picture_in_picture_alt_rounded),
+                    ),
+                  IconButton.filledTonal(
+                    tooltip: 'Lock controls',
+                    onPressed: _toggleLock,
+                    icon: const Icon(Icons.lock_outline_rounded),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Exit fullscreen',
+                    onPressed: _toggleFullscreen,
+                    icon: const Icon(Icons.fullscreen_exit_rounded),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (!_controlsLocked)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ColoredBox(
+              color: const Color(0xCC111827),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [_timeline(controller), _controls(controller)],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -373,6 +577,13 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
       children: [
         if (audio)
           IconButton(
+            tooltip: controller.shuffle ? 'Shuffle on' : 'Shuffle off',
+            onPressed: controller.loading ? null : controller.toggleShuffle,
+            color: controller.shuffle ? GeeColors.accentLight : null,
+            icon: const Icon(Icons.shuffle_rounded),
+          ),
+        if (audio)
+          IconButton(
             tooltip: 'Previous track',
             onPressed: controller.loading ? null : controller.previous,
             icon: const Icon(Icons.skip_previous_rounded),
@@ -402,10 +613,27 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
         if (audio)
           IconButton(
             tooltip: 'Next track',
-            onPressed: controller.loading || !controller.hasNext
+            onPressed: controller.loading || controller.queue.length < 2
                 ? null
                 : controller.next,
             icon: const Icon(Icons.skip_next_rounded),
+          ),
+        if (audio)
+          IconButton(
+            tooltip: switch (controller.repeatMode) {
+              PlaybackRepeatMode.off => 'Repeat off',
+              PlaybackRepeatMode.all => 'Repeat all',
+              PlaybackRepeatMode.one => 'Repeat one',
+            },
+            onPressed: controller.loading ? null : controller.cycleRepeatMode,
+            color: controller.repeatMode == PlaybackRepeatMode.off
+                ? null
+                : GeeColors.accentLight,
+            icon: Icon(
+              controller.repeatMode == PlaybackRepeatMode.one
+                  ? Icons.repeat_one_rounded
+                  : Icons.repeat_rounded,
+            ),
           ),
         IconButton(
           tooltip: 'Stop',
@@ -421,6 +649,11 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
       alignment: WrapAlignment.center,
       spacing: 18,
       children: [
+        TextButton.icon(
+          onPressed: _showAudioTracks,
+          icon: const Icon(Icons.audiotrack_rounded),
+          label: const Text('Audio'),
+        ),
         TextButton.icon(
           onPressed: _showSubtitles,
           icon: const Icon(Icons.closed_caption_rounded),
@@ -449,6 +682,17 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
             DropdownMenuItem(value: 1.0, child: Text('1:1')),
           ],
         ),
+        IconButton(
+          tooltip: 'Lock controls',
+          onPressed: _toggleLock,
+          icon: const Icon(Icons.lock_outline_rounded),
+        ),
+        if (_androidControls.supported)
+          IconButton(
+            tooltip: 'Picture in Picture',
+            onPressed: _enterPictureInPicture,
+            icon: const Icon(Icons.picture_in_picture_alt_rounded),
+          ),
         IconButton(
           tooltip: 'Fullscreen landscape',
           onPressed: _toggleFullscreen,

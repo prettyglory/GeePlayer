@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:gee_player/data/playback/playback_database.dart';
@@ -6,6 +7,8 @@ import 'package:gee_player/data/playback/playback_source_resolver.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+
+enum PlaybackRepeatMode { off, one, all }
 
 /// Coordinates one media session and its persisted resume position.
 class PlaybackController extends ChangeNotifier {
@@ -43,6 +46,9 @@ class PlaybackController extends ChangeNotifier {
         if (!loading && value && current != null) {
           _completed = true;
           unawaited(_writePosition(current!.id, duration, duration));
+          if (current!.kind == MediaKind.audio) {
+            unawaited(_advanceAfterCompletion());
+          }
         }
         _notify();
       }),
@@ -72,9 +78,14 @@ class PlaybackController extends ChangeNotifier {
   bool _completed = false;
   bool _disposed = false;
   bool _initialized = false;
+  bool _handlingCompletion = false;
+  final Random _random = Random();
   int sessionRevision = 0;
   int _lastSavedSecond = 0;
   Future<void> _pendingSave = Future.value();
+  bool shuffle = false;
+  PlaybackRepeatMode repeatMode = PlaybackRepeatMode.off;
+  Duration subtitleDelay = Duration.zero;
 
   bool get hasNext => index < queue.length - 1;
   bool get hasPrevious => index > 0;
@@ -111,8 +122,13 @@ class PlaybackController extends ChangeNotifier {
         await player.seek(saved);
       }
       await player.play();
-      await _database.recordPlayback(current!);
-      onHistoryChanged?.call();
+      try {
+        await _database.recordPlayback(current!);
+        onHistoryChanged?.call();
+      } catch (_) {
+        // Playback should continue when local history cannot be updated.
+      }
+      await setSubtitleDelay(subtitleDelay);
       sessionRevision++;
     } catch (exception) {
       error = 'Could not play ${current?.fileName ?? 'this file'}: $exception';
@@ -149,10 +165,52 @@ class PlaybackController extends ChangeNotifier {
 
   Future<void> setRate(double rate) => player.setRate(rate);
 
+  Future<void> setAudioTrack(AudioTrack track) => player.setAudioTrack(track);
+
+  Future<void> setSubtitleDelay(Duration value) async {
+    subtitleDelay = value;
+    if (_initialized && player.platform is NativePlayer) {
+      try {
+        await (player.platform! as NativePlayer).setProperty(
+          'sub-delay',
+          (value.inMilliseconds / 1000).toStringAsFixed(3),
+        );
+      } catch (_) {
+        // Some playback backends do not expose libmpv properties.
+      }
+    }
+    _notify();
+  }
+
+  void toggleShuffle() {
+    shuffle = !shuffle;
+    _notify();
+  }
+
+  void cycleRepeatMode() {
+    repeatMode = switch (repeatMode) {
+      PlaybackRepeatMode.off => PlaybackRepeatMode.all,
+      PlaybackRepeatMode.all => PlaybackRepeatMode.one,
+      PlaybackRepeatMode.one => PlaybackRepeatMode.off,
+    };
+    _notify();
+  }
+
   Future<void> saveProgress() => _savePosition();
 
   Future<void> next() async {
-    if (hasNext) await open(queue, index + 1);
+    if (queue.isEmpty) return;
+    if (shuffle && queue.length > 1) {
+      var nextIndex = index;
+      while (nextIndex == index) {
+        nextIndex = _random.nextInt(queue.length);
+      }
+      await open(queue, nextIndex);
+    } else if (hasNext) {
+      await open(queue, index + 1);
+    } else if (repeatMode == PlaybackRepeatMode.all) {
+      await open(queue, 0);
+    }
   }
 
   Future<void> previous() async {
@@ -189,6 +247,22 @@ class PlaybackController extends ChangeNotifier {
     } finally {
       await _source?.close();
       _source = null;
+    }
+  }
+
+  Future<void> _advanceAfterCompletion() async {
+    if (_handlingCompletion || loading || current == null) return;
+    _handlingCompletion = true;
+    try {
+      if (repeatMode == PlaybackRepeatMode.one) {
+        _completed = false;
+        await player.seek(Duration.zero);
+        await player.play();
+      } else if (hasNext || shuffle || repeatMode == PlaybackRepeatMode.all) {
+        await next();
+      }
+    } finally {
+      _handlingCompletion = false;
     }
   }
 

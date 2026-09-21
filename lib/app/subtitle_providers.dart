@@ -16,6 +16,28 @@ final companionSubtitleFinderProvider = Provider<CompanionSubtitleFinder>(
   (ref) => const AndroidCompanionSubtitleFinder(),
 );
 
+final subtitleAppearanceProvider =
+    AsyncNotifierProvider<SubtitleAppearanceController, SubtitleAppearance>(
+      SubtitleAppearanceController.new,
+      retry: (retryCount, error) => null,
+    );
+
+class SubtitleAppearanceController extends AsyncNotifier<SubtitleAppearance> {
+  SubtitlePreferences get _preferences => ref.read(subtitlePreferencesProvider);
+
+  @override
+  Future<SubtitleAppearance> build() => _preferences.appearance();
+
+  Future<void> saveAppearance(SubtitleAppearance appearance) async {
+    state = AsyncData(appearance);
+    await _preferences.setAppearance(appearance);
+    final playback = ref.read(playbackControllerProvider);
+    await playback.setSubtitleDelay(
+      Duration(milliseconds: appearance.delayMilliseconds),
+    );
+  }
+}
+
 final subtitleControllerProvider = Provider<SubtitleController>((ref) {
   final controller = SubtitleController(
     ref.watch(playbackControllerProvider),
