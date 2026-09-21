@@ -8,6 +8,7 @@ import 'package:gee_player/domain/media/media_library_query.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/playback_screen.dart';
 import 'package:gee_player/presentation/widgets/media_list_tile.dart';
+import 'package:gee_player/presentation/widgets/media_actions_button.dart';
 import 'package:gee_player/presentation/widgets/media_state_panel.dart';
 
 class MediaLibraryScreen extends ConsumerStatefulWidget {
@@ -193,6 +194,9 @@ class _MediaLibraryScreenState extends ConsumerState<MediaLibraryScreen> {
                         ? _FolderTile(folder: folders[index])
                         : MediaListTile(
                             media: filtered[index],
+                            trailing: MediaActionsButton(
+                              media: filtered[index],
+                            ),
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => PlaybackScreen(
@@ -349,13 +353,13 @@ class _FolderTile extends StatelessWidget {
   }
 }
 
-class _FolderContentsScreen extends StatelessWidget {
+class _FolderContentsScreen extends ConsumerWidget {
   const _FolderContentsScreen({required this.folder});
 
   final MediaFolder folder;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: Text(folder.name)),
       body: SafeArea(
@@ -364,6 +368,7 @@ class _FolderContentsScreen extends StatelessWidget {
           itemCount: folder.items.length,
           itemBuilder: (context, index) => MediaListTile(
             media: folder.items[index],
+            trailing: MediaActionsButton(media: folder.items[index]),
             onTap: () {
               final selected = folder.items[index];
               final queue = folder.items

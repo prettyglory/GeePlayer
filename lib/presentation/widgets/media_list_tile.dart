@@ -4,10 +4,16 @@ import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 
 class MediaListTile extends StatelessWidget {
-  const MediaListTile({required this.media, this.onTap, super.key});
+  const MediaListTile({
+    required this.media,
+    this.onTap,
+    this.trailing,
+    super.key,
+  });
 
   final LocalMedia media;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +69,7 @@ class MediaListTile extends StatelessWidget {
                 ],
               ),
             ),
+            ?trailing,
           ],
         ),
       ),

@@ -9,11 +9,14 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 /// Coordinates one media session and its persisted resume position.
 class PlaybackController extends ChangeNotifier {
-  PlaybackController(this._databaseFactory, this._sourceResolver);
+  PlaybackController(
+    this._database,
+    this._sourceResolver, {
+    this.onHistoryChanged,
+  });
 
   void _initializePlayer() {
     if (_initialized) return;
-    _database = _databaseFactory();
     player = Player();
     videoController = VideoController(player);
     _subscriptions.addAll([
@@ -51,9 +54,9 @@ class PlaybackController extends ChangeNotifier {
     _initialized = true;
   }
 
-  final PlaybackDatabase Function() _databaseFactory;
-  late final PlaybackDatabase _database;
+  final PlaybackDatabase _database;
   final PlaybackSourceResolver _sourceResolver;
+  final VoidCallback? onHistoryChanged;
   late final Player player;
   late final VideoController videoController;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
@@ -108,6 +111,8 @@ class PlaybackController extends ChangeNotifier {
         await player.seek(saved);
       }
       await player.play();
+      await _database.recordPlayback(current!);
+      onHistoryChanged?.call();
       sessionRevision++;
     } catch (exception) {
       error = 'Could not play ${current?.fileName ?? 'this file'}: $exception';
@@ -218,7 +223,6 @@ class PlaybackController extends ChangeNotifier {
       if (_initialized) {
         await player.dispose();
         await _source?.close();
-        await _database.close();
       }
     }());
     super.dispose();

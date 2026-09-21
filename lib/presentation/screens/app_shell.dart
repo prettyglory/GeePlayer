@@ -7,6 +7,7 @@ import 'package:gee_player/app/playback_providers.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
+import 'package:gee_player/presentation/screens/favorites_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/screens/media_library_screen.dart';
 import 'package:gee_player/presentation/screens/playback_screen.dart';
@@ -74,6 +75,9 @@ class _AppShellState extends ConsumerState<AppShell>
                   ),
                   AppDestination.settings => const SubtitleSettingsScreen(
                     key: ValueKey(AppDestination.settings),
+                  ),
+                  AppDestination.favorites => const FavoritesScreen(
+                    key: ValueKey(AppDestination.favorites),
                   ),
                   _ => FeaturePreviewScreen(
                     key: ValueKey(_selected),

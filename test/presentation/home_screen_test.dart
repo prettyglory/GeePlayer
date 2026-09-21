@@ -1,7 +1,10 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gee_player/app/media_library_providers.dart';
+import 'package:gee_player/app/media_collections_providers.dart';
+import 'package:gee_player/data/playback/playback_database.dart';
 import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
@@ -35,10 +38,13 @@ void main() {
         ),
       ),
     );
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           localMediaRepositoryProvider.overrideWith((ref) => repository),
+          playbackDatabaseProvider.overrideWithValue(database),
         ],
         child: const MaterialApp(home: AppShell()),
       ),
@@ -59,10 +65,13 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final repository = FakeMediaRepository(snapshot: emptyAccessibleLibrary());
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           localMediaRepositoryProvider.overrideWith((ref) => repository),
+          playbackDatabaseProvider.overrideWithValue(database),
         ],
         child: const MaterialApp(home: AppShell()),
       ),

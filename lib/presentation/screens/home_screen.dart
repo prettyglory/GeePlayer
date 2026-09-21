@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/media_library_providers.dart';
+import 'package:gee_player/app/media_collections_providers.dart';
 import 'package:gee_player/domain/media/library_snapshot.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/domain/media/media_library_query.dart';
@@ -18,6 +19,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(mediaLibraryProvider);
+    final collections = ref.watch(mediaCollectionsProvider).value;
     final snapshot = library.value;
     final videos = snapshot == null
         ? <LocalMedia>[]
@@ -78,17 +80,30 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 14),
                     _SectionGrid(
                       wide: wide,
-                      children: const [
+                      children: [
                         HomeSectionCard(
                           title: 'Continue watching',
                           message:
                               'Videos you start will be ready to resume here.',
                           icon: Icons.play_circle_outline_rounded,
+                          previewTitles:
+                              collections?.continueWatching
+                                  .take(3)
+                                  .map((item) => item.media.title)
+                                  .toList() ??
+                              const [],
                         ),
                         HomeSectionCard(
                           title: 'Recently played',
                           message: 'Your listening and viewing history will appear here.',
                           icon: Icons.history_rounded,
+                          previewTitles:
+                              collections?.recent
+                                  .take(3)
+                                  .map((item) => item.title)
+                                  .toList() ??
+                              const [],
+                          onOpen: () => onNavigate(AppDestination.favorites),
                         ),
                       ],
                     ),

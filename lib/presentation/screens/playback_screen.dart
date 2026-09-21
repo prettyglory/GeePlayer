@@ -7,6 +7,7 @@ import 'package:gee_player/app/playback_providers.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
+import 'package:gee_player/presentation/widgets/media_actions_button.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 class PlaybackScreen extends ConsumerStatefulWidget {
@@ -208,12 +209,22 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                         Center(child: MediaArtwork(media: media, size: 220)),
                       if (!_fullscreen) ...[
                         const SizedBox(height: 24),
-                        Text(
-                          media.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                media.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            MediaActionsButton(media: media),
+                          ],
                         ),
                         if (media.artist != null)
                           Text(
