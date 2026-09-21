@@ -4,14 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SubtitlePreferences {
   SubtitlePreferences({
     FlutterSecureStorage? secureStorage,
-    SharedPreferencesAsync? preferences,
-  }) : _secure = secureStorage ?? const FlutterSecureStorage(),
-       _preferences = preferences;
+  }) : _secure = secureStorage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _secure;
-  SharedPreferencesAsync? _preferences;
-  SharedPreferencesAsync get _prefs =>
-      _preferences ??= SharedPreferencesAsync();
+  late final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
   static const _apiKey = 'subdl.api_key';
   static const _autoSearch = 'subtitle.auto_search';
   static const _language = 'subtitle.language';

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:gee_player/app/playback_controller.dart';
+import 'package:gee_player/data/subtitles/android_companion_subtitle_finder.dart';
 import 'package:gee_player/data/subtitles/subdl_provider.dart';
 import 'package:gee_player/data/subtitles/subtitle_preferences.dart';
 import 'package:gee_player/data/subtitles/subtitle_store.dart';
@@ -17,6 +18,7 @@ class SubtitleController extends ChangeNotifier {
     this._store,
     this._preferences,
     this._provider,
+    this._companionFinder,
   ) {
     _playback.addListener(_onPlaybackChanged);
     _onPlaybackChanged();
@@ -26,6 +28,7 @@ class SubtitleController extends ChangeNotifier {
   final SubtitleStore _store;
   final SubtitlePreferences _preferences;
   final SubtitleProvider _provider;
+  final CompanionSubtitleFinder _companionFinder;
   StreamSubscription<Tracks>? _tracksSubscription;
   int _session = -1;
   bool _disposed = false;
@@ -48,6 +51,8 @@ class SubtitleController extends ChangeNotifier {
         cached = const [];
         online = const [];
         embedded = const [];
+        busy = false;
+        progress = null;
         message = null;
         _notify();
       }
@@ -94,6 +99,26 @@ class SubtitleController extends ChangeNotifier {
       if (embeddedChoice != null) {
         await _playback.player.setSubtitleTrack(embeddedChoice);
         message = 'Embedded subtitles';
+        return;
+      }
+      final existingLocal = _preferredLocal();
+      if (existingLocal != null) {
+        await _applyFile(existingLocal);
+        message = '${existingLocal.source} subtitle';
+        return;
+      }
+      final companion = await _companionFinder.find(media, order);
+      if (!_current(media, session)) return;
+      if (companion != null) {
+        final file = await _store.saveCompanion(
+          media.id,
+          companion.name,
+          companion.bytes,
+        );
+        if (!_current(media, session)) return;
+        cached = await _store.cachedFor(media.id);
+        await _applyFile(file);
+        message = 'Local subtitle found beside video';
         return;
       }
       final local = _preferredCached(order);
@@ -154,17 +179,21 @@ class SubtitleController extends ChangeNotifier {
         if (_trackLanguage(track.language) == code) return track;
       }
     }
-    return embedded.length == 1 ? embedded.first : null;
+    return null;
   }
 
   StoredSubtitle? _preferredCached(List<String> order) {
-    for (final file in cached) {
-      if (file.source == 'Imported') return file;
-    }
     for (final code in order) {
       for (final file in cached) {
         if (file.language == code) return file;
       }
+    }
+    return null;
+  }
+
+  StoredSubtitle? _preferredLocal() {
+    for (final file in cached) {
+      if (file.source == 'Imported' || file.source == 'Local') return file;
     }
     return null;
   }

@@ -14,7 +14,7 @@ The Phase 5 subtitle implementation is in place, with device playback checks sti
 - Folders group accessible media and open a list of their contents. Android tiles display video thumbnails and embedded audio artwork when available.
 - Video and music open a shared playback screen with play, pause, stop, seek, ten-second skip, and remaining-time display. Video has speed, aspect ratio, and fullscreen landscape controls. Music has previous and next track controls. A mini-player remains in the app shell while navigating.
 - Playback position is saved in a local Drift/SQLite database and restored when the same media is opened again. A position near the end is cleared so completed media restarts from the beginning.
-- Video subtitles can be selected from embedded tracks, imported from an Android file picker, or searched and downloaded from SubDL. Imported and downloaded subtitles are stored in app support storage for later offline playback. A close release-name match can load automatically; ambiguous search results remain available for manual choice. Empty searches are remembered for 24 hours.
+- Video subtitles can be selected from embedded tracks, discovered beside the video when Android exposes an indexed subtitle file, imported from an Android file picker, or searched and downloaded from SubDL. Local and downloaded subtitles are stored in app support storage for later offline playback. A close release-name match can load automatically; ambiguous search results remain available for manual choice. Empty searches are remembered for 24 hours.
 - Settings lets you securely save your own SubDL API key, enable automatic online search, and prefer Kiswahili with English fallback or English only. Online search is off by default. Video playback continues during subtitle searches and downloads.
 - Android permission requests are scoped to video or audio. The UI handles denial, partial video access, retry, and a link to Android App Settings. The library refreshes when the app returns to the foreground.
 - Reusable media state widgets support loading, empty, and error messages with an optional retry action.
@@ -73,7 +73,7 @@ With a phone or emulator connected, play a local video from Videos and a song fr
 
 ## Device check for Phase 5
 
-Open a video with an embedded subtitle and switch tracks from the Subtitles panel. Import an SRT file through the Android picker; reopen the video offline and confirm it reloads. In Settings, save your own SubDL key and enable automatic search. Test a video with an exact release match, a title with several matches that needs manual choice, and a title with no match. Verify playback continues while a subtitle downloads and that an invalid key or offline network gives a useful status. These runtime checks are still pending.
+Open a video with an embedded subtitle and switch tracks from the Subtitles panel. Place a same-named SRT beside a video in an indexed folder and check whether Android exposes it to Gee Player. Import an SRT file through the Android picker; reopen the video offline and confirm it reloads. In Settings, save your own SubDL key and enable automatic search. Test a video with an exact release match, a title with several matches that needs manual choice, and a title with no match. Verify playback continues while a subtitle downloads and that an invalid key or offline network gives a useful status. These runtime checks are still pending.
 
 ## Quality checks
 
@@ -89,7 +89,7 @@ The Android application ID is `com.gee.player`. The project targets Android only
 
 ## Known limitations
 
-- Automatic local subtitle discovery currently covers embedded tracks and subtitles previously imported or downloaded for the video. Android's scoped storage does not grant access to every external subtitle beside a MediaStore video; use the Android file picker to import it. Background audio, notification controls, playlists, favorites, and playback history are Phase 6 work.
+- Automatic local subtitle discovery covers embedded tracks, previously imported or downloaded subtitles, and readable indexed subtitle files beside the video. Android's scoped storage does not expose every external subtitle beside a MediaStore video; use the Android file picker to import a hidden file. Background audio, notification controls, playlists, favorites, and playback history are Phase 6 work.
 - Android MediaStore shows indexed video and audio that the user has granted access to. Android 14 and later can grant access to selected videos only. [Android media access](https://developer.android.com/training/data-storage/shared/media) and [partial video access](https://developer.android.com/about/versions/14/changes/partial-photo-video-access) explain these platform rules. Files outside the indexed collections and subtitle files are not included in this scan.
 - Video thumbnails and embedded audio artwork are best effort on Android. Files without readable artwork show a format icon. Native playback and codec support still need device verification; a recognized extension does not guarantee that its codec is playable.
 - Android debug compilation and automated tests passed on Windows. No Android device or emulator was available for runtime testing.

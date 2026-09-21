@@ -78,4 +78,15 @@ void main() {
     expect(await store.cachedFor('video:1'), hasLength(1));
     expect(await store.cachedFor('video:2'), isEmpty);
   });
+
+  test('stores a discovered local sidecar for offline playback', () async {
+    final saved = await store.saveCompanion(
+      'video:1',
+      'Movie.sw.srt',
+      utf8.encode('local text'),
+    );
+    expect(await saved.file.readAsString(), 'local text');
+    final cached = await store.cachedFor('video:1');
+    expect(cached.single.source, 'Local');
+  });
 }

@@ -18,13 +18,10 @@ class StoredSubtitle {
 }
 
 class SubtitleStore {
-  SubtitleStore({this.root, SharedPreferencesAsync? preferences})
-    : _preferences = preferences;
+  SubtitleStore({this.root});
 
   final Directory? root;
-  SharedPreferencesAsync? _preferences;
-  SharedPreferencesAsync get _prefs =>
-      _preferences ??= SharedPreferencesAsync();
+  late final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
   static const maxSubtitleBytes = 4 * 1024 * 1024;
   static const _extensions = {'srt', 'vtt', 'ass', 'ssa', 'sub'};
 
@@ -49,13 +46,18 @@ class SubtitleStore {
       if (!name.startsWith(prefix)) continue;
       final parts = name.substring(prefix.length).split('.');
       if (parts.length != 2 || !_extensions.contains(parts.last)) continue;
-      final source = parts.first == 'imported' ? 'Imported' : 'SubDL';
+      final source = switch (parts.first) {
+        'imported' => 'Imported',
+        'local' => 'Local',
+        _ => 'SubDL',
+      };
       found.add(StoredSubtitle(entry, parts.first.toUpperCase(), source));
     }
     found.sort(
       (a, b) => a.source == b.source
           ? a.file.path.compareTo(b.file.path)
-          : a.source == 'Imported'
+          : a.source == 'Imported' ||
+                (a.source == 'Local' && b.source == 'SubDL')
           ? -1
           : 1,
     );
@@ -76,6 +78,20 @@ class SubtitleStore {
       );
     }
     return _save(mediaId, bytes, 'imported', extension, 'Imported');
+  }
+
+  Future<StoredSubtitle> saveCompanion(
+    String mediaId,
+    String name,
+    List<int> bytes,
+  ) async {
+    final extension = _extension(name);
+    if (extension == null || bytes.isEmpty || bytes.length > maxSubtitleBytes) {
+      throw const SubtitleProviderException(
+        'Local subtitle is invalid or too large.',
+      );
+    }
+    return _save(mediaId, bytes, 'local', extension, 'Local');
   }
 
   Future<StoredSubtitle> saveDownload(

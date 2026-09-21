@@ -20,6 +20,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
@@ -66,6 +67,18 @@ class MainActivity : FlutterActivity() {
                             null
                         }
                         mainHandler.post { result.success(bytes) }
+                    }
+                    "findCompanionSubtitle" -> scanExecutor.execute {
+                        val found = try {
+                            findCompanionSubtitle(
+                                call.argument<String>("folderPath"),
+                                call.argument<String>("fileName"),
+                                call.argument<List<String>>("languages") ?: listOf("SW", "EN"),
+                            )
+                        } catch (_: Exception) {
+                            null
+                        }
+                        mainHandler.post { result.success(found) }
                     }
                     "openSettings" -> {
                         try {
@@ -252,6 +265,84 @@ class MainActivity : FlutterActivity() {
 
     private fun Cursor.getLongOrNull(index: Int): Long? =
         if (isNull(index)) null else getLong(index)
+
+    private fun findCompanionSubtitle(
+        folderPath: String?,
+        fileName: String?,
+        languages: List<String>,
+    ): Map<String, Any?>? {
+        if (folderPath.isNullOrBlank() || fileName.isNullOrBlank() || folderPath == "Device storage") return null
+        val baseName = fileName.substringBeforeLast('.', fileName)
+        val candidates = mutableListOf<Pair<String, Uri>>()
+        if (Build.VERSION.SDK_INT >= 29) {
+            val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            val relativePath = folderPath.trimEnd('/') + "/"
+            contentResolver.query(
+                collection,
+                arrayOf(
+                    MediaStore.Files.FileColumns._ID,
+                    MediaStore.Files.FileColumns.DISPLAY_NAME,
+                    MediaStore.Files.FileColumns.SIZE,
+                ),
+                "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ?",
+                arrayOf(relativePath),
+                null,
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
+                while (cursor.moveToNext()) {
+                    val name = cursor.getStringOrNull(nameIndex) ?: continue
+                    val size = cursor.getLongOrNull(sizeIndex) ?: continue
+                    if (size <= 0 || size > 4L * 1024 * 1024) continue
+                    if (companionRank(baseName, name, languages) == null) continue
+                    candidates += name to ContentUris.withAppendedId(collection, cursor.getLong(idIndex))
+                }
+            }
+        } else {
+            File(folderPath).listFiles()?.forEach { file ->
+                if (file.isFile && file.length() in 1L..(4L * 1024 * 1024) &&
+                    companionRank(baseName, file.name, languages) != null) {
+                    candidates += file.name to Uri.fromFile(file)
+                }
+            }
+        }
+        candidates.sortBy { companionRank(baseName, it.first, languages) }
+        for ((name, uri) in candidates) {
+            try {
+                val bytes = contentResolver.openInputStream(uri)?.use { input ->
+                    val output = ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (output.size() + read > 4 * 1024 * 1024) return@use null
+                        output.write(buffer, 0, read)
+                    }
+                    output.toByteArray()
+                }
+                if (bytes != null && bytes.isNotEmpty()) return mapOf("name" to name, "bytes" to bytes)
+            } catch (_: Exception) {
+                // An indexed document can still be unreadable under scoped storage.
+            }
+        }
+        return null
+    }
+
+    private fun companionRank(baseName: String, subtitleName: String, languages: List<String>): Int? {
+        val extension = subtitleName.substringAfterLast('.', "").lowercase()
+        if (extension !in setOf("srt", "vtt", "ass", "ssa", "sub")) return null
+        val stem = subtitleName.substringBeforeLast('.')
+        if (stem.equals(baseName, ignoreCase = true)) return languages.size
+        if (!stem.startsWith("$baseName.", ignoreCase = true)) return null
+        val suffix = stem.substring(baseName.length + 1).lowercase()
+        val code = when (suffix) {
+            "sw", "swa", "swahili", "kiswahili" -> "SW"
+            "en", "eng", "english" -> "EN"
+            else -> return null
+        }
+        return languages.indexOf(code).takeIf { it >= 0 }
+    }
 
     private fun loadArtwork(uriText: String?, kind: String?): ByteArray? {
         if (uriText == null) return null
