@@ -55,6 +55,48 @@ void main() {
 
     expect(find.text('No cached subtitles'), findsOneWidget);
   });
+
+  testWidgets('resetting general settings requires confirmation', (
+    tester,
+  ) async {
+    final preferences = FakeApplicationPreferences();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          applicationPreferencesProvider.overrideWithValue(preferences),
+          subtitleCacheInfoProvider.overrideWith(
+            _FakeSubtitleCacheController.new,
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: SettingsScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pure black theme'));
+    await tester.pumpAndSettle();
+    expect(preferences.settings.pureBlackTheme, isTrue);
+
+    final resetButton = find.text('Reset general settings');
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reset general settings?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(preferences.settings.pureBlackTheme, isTrue);
+
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Reset'));
+    await tester.pumpAndSettle();
+
+    expect(preferences.settings.pureBlackTheme, isFalse);
+    expect(find.text('General settings reset.'), findsOneWidget);
+  });
 }
 
 class _FakeSubtitleCacheController extends SubtitleCacheController {

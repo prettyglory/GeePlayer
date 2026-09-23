@@ -205,6 +205,27 @@ class _GeneralSettingsPanelState extends ConsumerState<_GeneralSettingsPanel> {
 
   Future<void> _reset() async {
     if (_saving) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset general settings?'),
+        content: const Text(
+          'Appearance and playback preferences will return to their defaults.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _saving = true);
     try {
       await ref.read(applicationSettingsProvider.notifier).reset();
