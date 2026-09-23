@@ -157,6 +157,48 @@ void main() {
     expect(await database.favoriteIds(), isNot(contains(trip.id)));
   });
 
+  testWidgets('adding media names the selected playlist in feedback', (
+    tester,
+  ) async {
+    final repository = FakeMediaRepository(
+      snapshot: const LibrarySnapshot(
+        items: [trip],
+        access: MediaAccess(
+          videos: MediaAccessLevel.granted,
+          audio: MediaAccessLevel.granted,
+        ),
+      ),
+    );
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final playlistId = await database.createPlaylist('Weekend watchlist');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+          playbackDatabaseProvider.overrideWithValue(database),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: MediaLibraryScreen(destination: AppDestination.videos),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Media actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add to playlist'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 items'), findsOneWidget);
+
+    await tester.tap(find.text('Weekend watchlist'));
+    await tester.pumpAndSettle();
+    expect(find.text('Added to Weekend watchlist'), findsOneWidget);
+    expect((await database.playlistMedia(playlistId)).single.id, trip.id);
+  });
+
   testWidgets('folder opens its discovered media', (tester) async {
     final repository = FakeMediaRepository(
       snapshot: const LibrarySnapshot(

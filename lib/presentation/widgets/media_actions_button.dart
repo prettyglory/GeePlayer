@@ -40,8 +40,18 @@ class MediaActionsButton extends ConsumerWidget {
               );
             }
           }
-        } else {
-          if (context.mounted) await showAddToPlaylist(context, ref, media);
+        } else if (context.mounted) {
+          try {
+            await showAddToPlaylist(context, ref, media);
+          } catch (_) {
+            if (context.mounted) {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.hideCurrentSnackBar();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Could not add to playlist')),
+              );
+            }
+          }
         }
       },
       itemBuilder: (context) => [
@@ -168,7 +178,9 @@ Future<void> showAddToPlaylist(
             ListTile(
               leading: const Icon(Icons.queue_music_rounded),
               title: Text(playlist.name),
-              subtitle: Text('${playlist.itemCount} tracks'),
+              subtitle: Text(
+                '${playlist.itemCount} ${playlist.itemCount == 1 ? 'item' : 'items'}',
+              ),
               onTap: () => Navigator.pop(context, playlist.id),
             ),
           ListTile(
@@ -182,9 +194,14 @@ Future<void> showAddToPlaylist(
   );
   if (playlistId == null || !context.mounted) return;
   var target = playlistId;
+  var targetName = collections.playlists
+      .where((playlist) => playlist.id == playlistId)
+      .map((playlist) => playlist.name)
+      .firstOrNull;
   if (target == '__new__') {
     final name = await showPlaylistNameDialog(context);
     if (name == null) return;
+    targetName = name;
     target =
         await ref
             .read(mediaCollectionsProvider.notifier)
@@ -192,11 +209,24 @@ Future<void> showAddToPlaylist(
         '';
   }
   if (target.isEmpty) return;
-  await ref
-      .read(mediaCollectionsProvider.notifier)
-      .addToPlaylist(target, media);
-  if (context.mounted) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Added to playlist')));
+  try {
+    await ref
+        .read(mediaCollectionsProvider.notifier)
+        .addToPlaylist(target, media);
+    if (context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Added to ${targetName ?? 'playlist'}')),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not add to playlist')),
+      );
+    }
   }
 }
