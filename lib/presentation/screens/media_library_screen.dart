@@ -238,9 +238,20 @@ class _LibraryControls extends StatelessWidget {
           TextField(
             controller: searchController,
             onChanged: onSearchChanged,
+            textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText: 'Search ${showSort ? 'media' : 'folders'}',
               prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: () {
+                        searchController.clear();
+                        onSearchChanged('');
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surfaceContainer,
               border: OutlineInputBorder(

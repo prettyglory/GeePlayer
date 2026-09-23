@@ -68,6 +68,12 @@ void main() {
     await tester.enterText(find.byType(TextField), 'missing');
     await tester.pumpAndSettle();
     expect(find.text('No media matches your search.'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Trip'), findsOneWidget);
+    expect(find.text('No media matches your search.'), findsNothing);
+    expect(find.byTooltip('Clear search'), findsNothing);
   });
 
   testWidgets('video permission action requests video access only', (
