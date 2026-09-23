@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
+import 'package:gee_player/app/playback_sleep_timer.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
+import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
 import 'package:gee_player/presentation/screens/favorites_screen.dart';
@@ -56,6 +58,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   Widget build(BuildContext context) {
     final playback = ref.watch(playbackControllerProvider);
+    final sleepTimer = ref.watch(playbackSleepTimerProvider);
     ref.watch(subtitleControllerProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -125,7 +128,7 @@ class _AppShellState extends ConsumerState<AppShell>
                         ],
                       ),
                     ),
-                    _MiniPlayer(controller: playback),
+                    _MiniPlayer(controller: playback, sleepTimer: sleepTimer),
                   ],
                 )
               : content,
@@ -134,7 +137,7 @@ class _AppShellState extends ConsumerState<AppShell>
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _MiniPlayer(controller: playback),
+                    _MiniPlayer(controller: playback, sleepTimer: sleepTimer),
                     NavigationBar(
                       backgroundColor: Theme.of(context)
                           .colorScheme
@@ -165,9 +168,10 @@ class _AppShellState extends ConsumerState<AppShell>
 }
 
 class _MiniPlayer extends StatelessWidget {
-  const _MiniPlayer({required this.controller});
+  const _MiniPlayer({required this.controller, required this.sleepTimer});
 
   final PlaybackController controller;
+  final PlaybackSleepTimer sleepTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +205,26 @@ class _MiniPlayer extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (media.kind == MediaKind.audio)
+                      AnimatedBuilder(
+                        animation: sleepTimer,
+                        builder: (context, _) {
+                          if (!sleepTimer.active) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.bedtime_rounded, size: 16),
+                                const SizedBox(width: 4),
+                                Text(_timerLabel(sleepTimer.remaining)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     IconButton(
                       tooltip: controller.playing ? 'Pause' : 'Play',
                       onPressed: controller.loading
@@ -225,5 +249,12 @@ class _MiniPlayer extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _timerLabel(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 }

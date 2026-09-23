@@ -7,6 +7,7 @@ import 'package:gee_player/app/application_settings_providers.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
+import 'package:gee_player/app/playback_sleep_timer.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/data/playback/android_player_controls.dart';
 import 'package:gee_player/data/settings/application_preferences.dart';
@@ -200,6 +201,62 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     );
   }
 
+  void _showQueue(PlaybackController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.72,
+        child: _PlaybackQueueSheet(controller: controller),
+      ),
+    );
+  }
+
+  void _showSleepTimer(PlaybackSleepTimer timer) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => AnimatedBuilder(
+        animation: timer,
+        builder: (context, _) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              Text(
+                'Sleep timer',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              if (timer.active)
+                ListTile(
+                  leading: const Icon(Icons.timer_off_outlined),
+                  title: const Text('Cancel timer'),
+                  subtitle: Text(
+                    'Playback pauses in ${_durationLabel(timer.remaining)}',
+                  ),
+                  onTap: () {
+                    timer.cancel();
+                    Navigator.pop(context);
+                  },
+                ),
+              for (final minutes in const [15, 30, 45, 60])
+                ListTile(
+                  leading: const Icon(Icons.bedtime_outlined),
+                  title: Text(minutes == 60 ? '1 hour' : '$minutes minutes'),
+                  onTap: () {
+                    timer.schedule(Duration(minutes: minutes));
+                    Navigator.pop(context);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -299,6 +356,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     final appSettings =
         ref.watch(applicationSettingsProvider).value ??
         const ApplicationSettings();
+    final sleepTimer = ref.watch(playbackSleepTimerProvider);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -373,7 +431,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                         _timeline(controller),
                         _controls(controller),
                         if (media.kind == MediaKind.audio)
-                          _audioOptions(controller),
+                          _audioOptions(controller, sleepTimer),
                         if (media.kind == MediaKind.video)
                           _videoOptions(controller),
                         if (media.kind == MediaKind.video)
@@ -713,16 +771,50 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     );
   }
 
-  Widget _audioOptions(PlaybackController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Speed'),
-          const SizedBox(width: 10),
-          _playbackSpeedPicker(controller),
-        ],
+  Widget _audioOptions(
+    PlaybackController controller,
+    PlaybackSleepTimer sleepTimer,
+  ) {
+    return AnimatedBuilder(
+      animation: sleepTimer,
+      builder: (context, _) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Speed'),
+                const SizedBox(width: 8),
+                _playbackSpeedPicker(controller),
+              ],
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showQueue(controller),
+              icon: const Icon(Icons.queue_music_rounded),
+              label: Text(
+                'Queue ${controller.index + 1}/${controller.queue.length}',
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showSleepTimer(sleepTimer),
+              icon: Icon(
+                sleepTimer.active
+                    ? Icons.bedtime_rounded
+                    : Icons.bedtime_outlined,
+              ),
+              label: Text(
+                sleepTimer.active
+                    ? 'Sleep ${_durationLabel(sleepTimer.remaining)}'
+                    : 'Sleep timer',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -751,5 +843,112 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     return safe.inHours > 0
         ? '${safe.inHours}:$minutes:$seconds'
         : '$minutes:$seconds';
+  }
+
+  String _durationLabel(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+}
+
+class _PlaybackQueueSheet extends StatelessWidget {
+  const _PlaybackQueueSheet({required this.controller});
+
+  final PlaybackController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final queue = controller.queue;
+        return SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  'Playing queue',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Expanded(
+                child: ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
+                  padding: const EdgeInsets.only(bottom: 20),
+                  itemCount: queue.length,
+                  onReorderItem: controller.reorderQueue,
+                  itemBuilder: (context, queueIndex) {
+                    final media = queue[queueIndex];
+                    final current = queueIndex == controller.index;
+                    return ListTile(
+                      key: ValueKey(media.id),
+                      selected: current,
+                      leading: Icon(
+                        current
+                            ? Icons.graphic_eq_rounded
+                            : Icons.music_note_rounded,
+                      ),
+                      title: Text(
+                        media.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: media.artist == null
+                          ? null
+                          : Text(
+                              media.artist!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                      onTap: controller.loading
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              if (!current) {
+                                unawaited(
+                                  controller.playQueueIndex(queueIndex),
+                                );
+                              }
+                            },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: current
+                                ? 'Currently playing'
+                                : 'Remove from queue',
+                            onPressed: current
+                                ? null
+                                : () => controller.removeQueueItem(queueIndex),
+                            icon: Icon(
+                              current
+                                  ? Icons.volume_up_rounded
+                                  : Icons.remove_circle_outline_rounded,
+                            ),
+                          ),
+                          ReorderableDragStartListener(
+                            index: queueIndex,
+                            enabled: !controller.loading,
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.drag_handle_rounded),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

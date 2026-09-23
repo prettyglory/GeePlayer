@@ -50,6 +50,39 @@ void main() {
       AudioProcessingState.idle,
     );
   });
+
+  test('publishes the new queue index after tracks are reordered', () {
+    const first = LocalMedia(
+      id: 'audio:1',
+      kind: MediaKind.audio,
+      uri: 'content://audio/1',
+      fileName: 'First.mp3',
+      folderPath: 'Music',
+    );
+    const second = LocalMedia(
+      id: 'audio:2',
+      kind: MediaKind.audio,
+      uri: 'content://audio/2',
+      fileName: 'Second.mp3',
+      folderPath: 'Music',
+    );
+    final handler = GeeAudioHandler();
+    final delegate = _FakePlaybackDelegate(
+      media: second,
+      queueItems: [first, second],
+      currentIndex: 1,
+    );
+    handler.bind(delegate);
+
+    expect(handler.playbackState.value.queueIndex, 1);
+
+    delegate.queueItems = [second, first];
+    delegate.currentIndex = 0;
+    handler.sync();
+
+    expect(handler.queue.value.map((item) => item.id), [second.id, first.id]);
+    expect(handler.playbackState.value.queueIndex, 0);
+  });
 }
 
 class _FakePlaybackDelegate implements AudioPlaybackDelegate {
@@ -63,9 +96,13 @@ class _FakePlaybackDelegate implements AudioPlaybackDelegate {
       artist: 'Gee',
       duration: Duration(minutes: 3),
     ),
-  });
+    List<LocalMedia>? queueItems,
+    this.currentIndex = 0,
+  }) : queueItems = queueItems ?? [media];
 
   final LocalMedia media;
+  List<LocalMedia> queueItems;
+  int currentIndex;
   int pauseCount = 0;
   int nextCount = 0;
   int previousCount = 0;
@@ -78,7 +115,7 @@ class _FakePlaybackDelegate implements AudioPlaybackDelegate {
   LocalMedia get current => media;
 
   @override
-  int get index => 0;
+  int get index => currentIndex;
 
   @override
   bool get loading => false;
@@ -90,7 +127,7 @@ class _FakePlaybackDelegate implements AudioPlaybackDelegate {
   Duration get position => const Duration(seconds: 30);
 
   @override
-  List<LocalMedia> get queue => [media];
+  List<LocalMedia> get queue => queueItems;
 
   @override
   bool get repeatAll => false;

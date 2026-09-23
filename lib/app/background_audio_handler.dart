@@ -92,6 +92,7 @@ class GeeAudioHandler extends BaseAudioHandler {
     if (!_sameIds(queueIds, _publishedQueueIds)) {
       _publishedQueueIds = queueIds;
       queue.add(audioQueue.map(_mediaItem).toList());
+      force = true;
     }
     if (_publishedMediaId != current.id) {
       _publishedMediaId = current.id;

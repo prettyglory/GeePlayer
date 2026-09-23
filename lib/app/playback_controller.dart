@@ -240,6 +240,42 @@ class PlaybackController extends ChangeNotifier
     _notify();
   }
 
+  Future<void> playQueueIndex(int queueIndex) => open(queue, queueIndex);
+
+  bool reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex < 0 ||
+        oldIndex >= queue.length ||
+        newIndex < 0 ||
+        newIndex >= queue.length ||
+        oldIndex == newIndex) {
+      return false;
+    }
+    final playingItem = current;
+    final reordered = List<LocalMedia>.of(queue);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    queue = List.unmodifiable(reordered);
+    if (playingItem != null) {
+      index = reordered.indexWhere((item) => identical(item, playingItem));
+      if (index < 0) {
+        index = reordered.indexWhere((item) => item.id == playingItem.id);
+      }
+    }
+    _notify();
+    return true;
+  }
+
+  bool removeQueueItem(int queueIndex) {
+    if (queueIndex < 0 || queueIndex >= queue.length || queueIndex == index) {
+      return false;
+    }
+    final updated = List<LocalMedia>.of(queue)..removeAt(queueIndex);
+    if (queueIndex < index) index--;
+    queue = List.unmodifiable(updated);
+    _notify();
+    return true;
+  }
+
   Future<void> saveProgress() => _savePosition();
 
   Future<void> handleAppPaused() async {
