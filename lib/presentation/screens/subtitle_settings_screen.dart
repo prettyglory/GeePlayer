@@ -5,7 +5,9 @@ import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/data/subtitles/subtitle_preferences.dart';
 
 class SubtitleSettingsScreen extends ConsumerStatefulWidget {
-  const SubtitleSettingsScreen({super.key});
+  const SubtitleSettingsScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   ConsumerState<SubtitleSettingsScreen> createState() =>
@@ -83,10 +85,18 @@ class _SubtitleSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: !widget.embedded,
+      bottom: !widget.embedded,
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text('Subtitles', style: Theme.of(context).textTheme.headlineMedium),
+          if (!widget.embedded) ...[
+            Text(
+              'Subtitles',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 12),
+          ],
           const SizedBox(height: 12),
           const Text(
             'Embedded and imported subtitles work offline. Add your own SubDL key to search online.',

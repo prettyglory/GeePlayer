@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gee_player/app/gee_colors.dart';
 
 enum MediaViewStatus { loading, empty, error }
 
@@ -32,7 +31,7 @@ class MediaStatePanel extends StatelessWidget {
       MediaViewStatus.empty => Icon(
         icon ?? Icons.inbox_outlined,
         size: compact ? 30 : 42,
-        color: GeeColors.accentLight,
+        color: Theme.of(context).colorScheme.primary,
       ),
       MediaViewStatus.error => Icon(
         icon ?? Icons.error_outline_rounded,
@@ -55,8 +54,10 @@ class MediaStatePanel extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: GeeColors.textMuted, height: 1.4),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
             ),
             if (onRetry != null || onSecondary != null) ...[
               const SizedBox(height: 14),

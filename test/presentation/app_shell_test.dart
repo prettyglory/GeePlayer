@@ -2,11 +2,13 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gee_player/app/media_library_providers.dart';
+import 'package:gee_player/app/application_settings_providers.dart';
 import 'package:gee_player/app/media_collections_providers.dart';
+import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/data/playback/playback_database.dart';
 import 'package:gee_player/presentation/screens/app_shell.dart';
 
+import '../support/fake_application_preferences.dart';
 import '../support/fake_media_repository.dart';
 
 void main() {
@@ -19,6 +21,9 @@ void main() {
         overrides: [
           localMediaRepositoryProvider.overrideWith((ref) => repository),
           playbackDatabaseProvider.overrideWithValue(database),
+          applicationPreferencesProvider.overrideWithValue(
+            FakeApplicationPreferences(),
+          ),
         ],
         child: const MaterialApp(home: AppShell()),
       ),
@@ -46,6 +51,9 @@ void main() {
         overrides: [
           localMediaRepositoryProvider.overrideWith((ref) => repository),
           playbackDatabaseProvider.overrideWithValue(database),
+          applicationPreferencesProvider.overrideWithValue(
+            FakeApplicationPreferences(),
+          ),
         ],
         child: const MaterialApp(home: AppShell()),
       ),
@@ -60,7 +68,7 @@ void main() {
         Icons.favorite_border_rounded,
         'Media you mark as a favorite will appear here.',
       ),
-      (Icons.settings_outlined, 'Subtitles'),
+      (Icons.settings_outlined, 'Appearance'),
     ]) {
       await tester.tap(find.byIcon(icon).first);
       await tester.pumpAndSettle();
@@ -82,6 +90,9 @@ void main() {
         overrides: [
           localMediaRepositoryProvider.overrideWith((ref) => repository),
           playbackDatabaseProvider.overrideWithValue(database),
+          applicationPreferencesProvider.overrideWithValue(
+            FakeApplicationPreferences(),
+          ),
         ],
         child: const MaterialApp(home: AppShell()),
       ),

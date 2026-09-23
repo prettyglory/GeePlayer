@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gee_player/app/application_settings_providers.dart';
 import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/data/playback/android_player_controls.dart';
+import 'package:gee_player/data/settings/application_preferences.dart';
 import 'package:gee_player/data/subtitles/subtitle_preferences.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
@@ -294,6 +296,9 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
     final appearance =
         ref.watch(subtitleAppearanceProvider).value ??
         const SubtitleAppearance();
+    final appSettings =
+        ref.watch(applicationSettingsProvider).value ??
+        const ApplicationSettings();
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
@@ -305,13 +310,21 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           body: media == null
               ? const Center(child: Text('Choose a video or song to play.'))
               : _fullscreen && media.kind == MediaKind.video
-              ? _fullscreenVideo(controller, appearance)
+              ? _fullscreenVideo(
+                  controller,
+                  appearance,
+                  appSettings.gestureControls,
+                )
               : SafeArea(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                     children: [
                       if (media.kind == MediaKind.video)
-                        _videoSurface(controller, appearance)
+                        _videoSurface(
+                          controller,
+                          appearance,
+                          appSettings.gestureControls,
+                        )
                       else
                         Center(child: MediaArtwork(media: media, size: 220)),
                       if (!_fullscreen) ...[
@@ -384,11 +397,12 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   Widget _videoSurface(
     PlaybackController controller,
     SubtitleAppearance appearance,
+    bool gesturesEnabled,
   ) {
     return Center(
       child: AspectRatio(
         aspectRatio: _aspectRatio,
-        child: _interactiveVideo(controller, appearance),
+        child: _interactiveVideo(controller, appearance, gesturesEnabled),
       ),
     );
   }
@@ -396,6 +410,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   Widget _interactiveVideo(
     PlaybackController controller,
     SubtitleAppearance appearance,
+    bool gesturesEnabled,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) => Stack(
@@ -419,17 +434,17 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onDoubleTapDown: _controlsLocked
+              onDoubleTapDown: _controlsLocked || !gesturesEnabled
                   ? null
                   : (details) =>
                         _doubleTap(details.localPosition, constraints.maxWidth),
-              onVerticalDragStart: _controlsLocked
+              onVerticalDragStart: _controlsLocked || !gesturesEnabled
                   ? null
                   : (details) => _verticalDragStart(
                       details.localPosition,
                       constraints.maxWidth,
                     ),
-              onVerticalDragUpdate: _controlsLocked
+              onVerticalDragUpdate: _controlsLocked || !gesturesEnabled
                   ? null
                   : (details) => _verticalDragUpdate(
                       details.primaryDelta ?? 0,
@@ -468,10 +483,13 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
   Widget _fullscreenVideo(
     PlaybackController controller,
     SubtitleAppearance appearance,
+    bool gesturesEnabled,
   ) {
     return Stack(
       children: [
-        Positioned.fill(child: _interactiveVideo(controller, appearance)),
+        Positioned.fill(
+          child: _interactiveVideo(controller, appearance, gesturesEnabled),
+        ),
         if (_controlsLocked)
           SafeArea(
             child: Align(
@@ -579,7 +597,9 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           IconButton(
             tooltip: controller.shuffle ? 'Shuffle on' : 'Shuffle off',
             onPressed: controller.loading ? null : controller.toggleShuffle,
-            color: controller.shuffle ? GeeColors.accentLight : null,
+            color: controller.shuffle
+                ? Theme.of(context).colorScheme.primary
+                : null,
             icon: const Icon(Icons.shuffle_rounded),
           ),
         if (audio)
@@ -628,7 +648,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
             onPressed: controller.loading ? null : controller.cycleRepeatMode,
             color: controller.repeatMode == PlaybackRepeatMode.off
                 ? null
-                : GeeColors.accentLight,
+                : Theme.of(context).colorScheme.primary,
             icon: Icon(
               controller.repeatMode == PlaybackRepeatMode.one
                   ? Icons.repeat_one_rounded

@@ -4,7 +4,7 @@ Gee Player is an Android Flutter application for playing locally stored video an
 
 ## Project status
 
-The Phase 6 playback and collection implementation is in place, with device playback checks still pending. Gee Player has branded launch screens, a dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
+The Phase 7 application-settings implementation is in place, with device playback checks still pending. Gee Player has branded launch screens, a customizable dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
 
 ## Current interface
 
@@ -15,7 +15,7 @@ The Phase 6 playback and collection implementation is in place, with device play
 - Video and music open a shared playback screen with play, pause, stop, seek, ten-second skip, and remaining-time display. Video has audio-track selection, speed, aspect ratio, fullscreen, screen lock, double-tap seeking, brightness and volume gestures, and Android Picture in Picture. Music has previous, next, shuffle, and repeat-one or repeat-all controls. A mini-player remains in the app shell while navigating.
 - Playback position is saved in a local Drift/SQLite database and restored when the same media is opened again. A position near the end is cleared so completed media restarts from the beginning.
 - Video subtitles can be selected from embedded tracks, discovered beside the video when Android exposes an indexed subtitle file, imported from an Android file picker, or searched and downloaded from SubDL. Local and downloaded subtitles are stored in app support storage for later offline playback. A close release-name match can load automatically; ambiguous search results remain available for manual choice. Empty searches are remembered for 24 hours.
-- Settings lets you securely save your own SubDL API key, enable automatic online search, prefer Kiswahili with English fallback or English only, and customize subtitle size, colors, position, and timing. Online search is off by default. Video playback continues during subtitle searches and downloads.
+- Settings includes General and Subtitles tabs. General preferences cover accent color, an OLED-friendly pure-black theme, default playback speed, resume behavior, background audio, video gestures, and a reset action. The Subtitles tab securely saves your own SubDL API key, controls automatic online search and language preference, and customizes subtitle size, colors, position, and timing. Online search is off by default. Video playback continues during subtitle searches and downloads.
 - Favorites, playlists, playback history, and Continue watching are stored in the local Drift database. Library and player menus can add media to a favorite or playlist, while the collection screen supports playlist rename, deletion, and history clearing.
 - Music uses an Android foreground media service for playback with notification, lock-screen, headset-button, audio-focus, interruption, and headphone-disconnection handling.
 - Android permission requests are scoped to video or audio. The UI handles denial, partial video access, retry, and a link to Android App Settings. The library refreshes when the app returns to the foreground.
@@ -81,6 +81,10 @@ Open a video with an embedded subtitle and switch tracks from the Subtitles pane
 ## Device check for Phase 6
 
 Favorite media from the library and player, create a playlist, add and remove tracks, and confirm the data survives an app restart. Play part of a video and confirm Home shows it under Continue watching. Test shuffle and each repeat mode with several songs. In a video, test audio-track selection, customized subtitles, double-tap seek, left-side brightness, right-side volume, screen lock, and Picture in Picture. Start music, turn off the screen, and verify the notification, lock-screen, headset, phone-call interruption, and headphone-disconnection controls. These runtime checks are still pending.
+
+## Device check for Phase 7
+
+Change the accent and pure-black theme, restart the app, and confirm both choices persist. Set a non-default playback speed and verify newly opened media starts at that rate. Disable resume playback and confirm saved positions are ignored. Disable video gestures and confirm double-tap, brightness, and volume gestures no longer respond. Finally, disable background audio, hide the app while music is playing, and confirm playback pauses. These runtime checks are still pending.
 
 ## Quality checks
 

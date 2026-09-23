@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:gee_player/app/background_audio_handler.dart';
 import 'package:gee_player/data/playback/playback_database.dart';
 import 'package:gee_player/data/playback/playback_source_resolver.dart';
+import 'package:gee_player/data/settings/application_preferences.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -17,6 +18,7 @@ class PlaybackController extends ChangeNotifier
   PlaybackController(
     this._database,
     this._sourceResolver, {
+    required this.applicationPreferences,
     this.audioHandler,
     this.onHistoryChanged,
   }) {
@@ -67,6 +69,7 @@ class PlaybackController extends ChangeNotifier
 
   final PlaybackDatabase _database;
   final PlaybackSourceResolver _sourceResolver;
+  final ApplicationPreferences applicationPreferences;
   final GeeAudioHandler? audioHandler;
   final VoidCallback? onHistoryChanged;
   late final Player player;
@@ -127,9 +130,13 @@ class PlaybackController extends ChangeNotifier
       _lastSavedSecond = 0;
       _notify();
 
-      final saved = await _database.positionFor(current!.id);
+      final settings = await _settings();
+      final saved = settings.resumePlayback
+          ? await _database.positionFor(current!.id)
+          : null;
       _source = await _sourceResolver.resolve(current!);
       await player.open(Media(_source!.uri), play: false);
+      await player.setRate(settings.defaultPlaybackSpeed);
       if (saved != null && saved > Duration.zero) {
         if (player.state.duration == Duration.zero) {
           await player.stream.duration
@@ -235,6 +242,16 @@ class PlaybackController extends ChangeNotifier
 
   Future<void> saveProgress() => _savePosition();
 
+  Future<void> handleAppPaused() async {
+    await _savePosition();
+    final settings = await _settings();
+    if (!settings.backgroundAudio &&
+        current?.kind == MediaKind.audio &&
+        playing) {
+      await pause();
+    }
+  }
+
   @override
   Future<void> next() async {
     if (queue.isEmpty) return;
@@ -311,6 +328,14 @@ class PlaybackController extends ChangeNotifier
     final media = current;
     if (media == null || _completed) return;
     await _writePosition(media.id, position, duration);
+  }
+
+  Future<ApplicationSettings> _settings() async {
+    try {
+      return await applicationPreferences.load();
+    } catch (_) {
+      return const ApplicationSettings();
+    }
   }
 
   Future<void> _writePosition(String mediaId, Duration at, Duration total) {

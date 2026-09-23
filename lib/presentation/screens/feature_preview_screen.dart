@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
 
 class FeaturePreviewScreen extends StatelessWidget {
@@ -36,14 +35,16 @@ class FeaturePreviewScreen extends StatelessWidget {
                   width: 88,
                   height: 88,
                   decoration: BoxDecoration(
-                    color: GeeColors.surfaceRaised,
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: GeeColors.outline),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                   ),
                   child: Icon(
                     destination.icon,
                     size: 38,
-                    color: GeeColors.accentLight,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -56,8 +57,10 @@ class FeaturePreviewScreen extends StatelessWidget {
                 Text(
                   _description,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge
-                      ?.copyWith(color: GeeColors.textMuted, height: 1.45),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),

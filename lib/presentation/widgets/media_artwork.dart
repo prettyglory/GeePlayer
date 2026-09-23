@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 
@@ -45,12 +44,12 @@ class _MediaArtworkState extends ConsumerState<MediaArtwork> {
           future: _artwork,
           builder: (context, snapshot) {
             final bytes = snapshot.data;
-            if (bytes == null || bytes.isEmpty) return _fallback();
+            if (bytes == null || bytes.isEmpty) return _fallback(context);
             return Image.memory(
               bytes,
               fit: BoxFit.cover,
               filterQuality: FilterQuality.low,
-              errorBuilder: (context, error, stackTrace) => _fallback(),
+              errorBuilder: (context, error, stackTrace) => _fallback(context),
             );
           },
         ),
@@ -58,13 +57,13 @@ class _MediaArtworkState extends ConsumerState<MediaArtwork> {
     );
   }
 
-  Widget _fallback() => ColoredBox(
-    color: GeeColors.surfaceRaised,
+  Widget _fallback(BuildContext context) => ColoredBox(
+    color: Theme.of(context).colorScheme.surfaceContainerHigh,
     child: Icon(
       widget.media.kind == MediaKind.video
           ? Icons.movie_outlined
           : Icons.music_note_rounded,
-      color: GeeColors.accentLight,
+      color: Theme.of(context).colorScheme.primary,
       size: widget.size * 0.5,
     ),
   );

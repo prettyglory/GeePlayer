@@ -28,7 +28,7 @@ class HomeSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: GeeColors.surface,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: GeeColors.outline),
       ),
@@ -39,7 +39,11 @@ class HomeSectionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 17, 14, 0),
             child: Row(
               children: [
-                Icon(icon, color: GeeColors.accentLight, size: 21),
+                Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 21,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

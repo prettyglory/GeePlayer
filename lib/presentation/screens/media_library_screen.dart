@@ -242,7 +242,7 @@ class _LibraryControls extends StatelessWidget {
               hintText: 'Search ${showSort ? 'media' : 'folders'}',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
-              fillColor: GeeColors.surface,
+              fillColor: Theme.of(context).colorScheme.surfaceContainer,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: GeeColors.outline),
@@ -305,15 +305,15 @@ class _AccessBanner extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: GeeColors.surfaceRaised,
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.info_outline_rounded,
             size: 19,
-            color: GeeColors.accentLight,
+            color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 9),
           Expanded(child: Text(message, style: const TextStyle(fontSize: 12))),
@@ -332,12 +332,12 @@ class _FolderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: GeeColors.surface,
+      color: Theme.of(context).colorScheme.surfaceContainer,
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: const Icon(
+        leading: Icon(
           Icons.folder_rounded,
-          color: GeeColors.accentLight,
+          color: Theme.of(context).colorScheme.primary,
           size: 32,
         ),
         title: Text(folder.name),

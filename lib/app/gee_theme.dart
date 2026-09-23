@@ -1,24 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:gee_player/app/gee_colors.dart';
+import 'package:gee_player/data/settings/application_preferences.dart';
 
 abstract final class GeeTheme {
-  static ThemeData get dark {
+  static ThemeData dark({
+    AccentPreference accentPreference = AccentPreference.electricBlue,
+    bool pureBlack = false,
+  }) {
     final base = ThemeData(brightness: Brightness.dark, useMaterial3: true);
+    final accent = switch (accentPreference) {
+      AccentPreference.electricBlue => GeeColors.accent,
+      AccentPreference.cyan => const Color(0xFF00BCD4),
+      AccentPreference.violet => const Color(0xFF8B7CFF),
+    };
+    final background = pureBlack ? Colors.black : GeeColors.background;
+    final surface = pureBlack ? const Color(0xFF101010) : GeeColors.surface;
+    final raisedSurface = pureBlack
+        ? const Color(0xFF181818)
+        : GeeColors.surfaceRaised;
 
     return base.copyWith(
-      colorScheme: const ColorScheme.dark(
-        primary: GeeColors.accent,
-        onPrimary: GeeColors.text,
-        secondary: GeeColors.accentLight,
-        onSecondary: GeeColors.background,
-        surface: GeeColors.surface,
-        onSurface: GeeColors.text,
-        outline: GeeColors.outline,
-      ),
-      scaffoldBackgroundColor: GeeColors.background,
+      colorScheme:
+          ColorScheme.dark(
+            primary: accent,
+            onPrimary: GeeColors.text,
+            secondary: accent,
+            onSecondary: background,
+            surface: surface,
+            onSurface: GeeColors.text,
+            onSurfaceVariant: GeeColors.textMuted,
+            outline: GeeColors.outline,
+          ).copyWith(
+            surfaceContainer: surface,
+            surfaceContainerHigh: raisedSurface,
+          ),
+      scaffoldBackgroundColor: background,
       dividerColor: GeeColors.outline,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: GeeColors.background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: background,
         foregroundColor: GeeColors.text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,

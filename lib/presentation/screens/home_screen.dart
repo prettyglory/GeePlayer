@@ -259,27 +259,32 @@ class _HomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       constraints: const BoxConstraints(minHeight: 206),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF244C94), Color(0xFF172F62), GeeColors.surface],
+          colors: [
+            Color.lerp(colors.primary, colors.surface, 0.2)!,
+            Color.lerp(colors.primary, colors.surface, 0.62)!,
+            colors.surface,
+          ],
         ),
-        border: Border.all(color: const Color(0xFF3C68AA)),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.55)),
       ),
       child: Stack(
         children: [
-          const Positioned(
+          Positioned(
             right: -16,
             bottom: -52,
             child: Icon(
               Icons.play_circle_fill_rounded,
               size: 224,
-              color: Color(0x224A90FF),
+              color: colors.primary.withValues(alpha: 0.14),
             ),
           ),
           Padding(
@@ -289,10 +294,10 @@ class _HomeHero extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'WELCOME TO GEE PLAYER',
                     style: TextStyle(
-                      color: GeeColors.accentLight,
+                      color: colors.primary,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.6,
                       fontSize: 11,
@@ -368,7 +373,7 @@ class _QuickLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: GeeColors.surfaceRaised,
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         key: ValueKey('quick-${destination.label.toLowerCase()}'),
@@ -382,7 +387,10 @@ class _QuickLink extends StatelessWidget {
           child: compact
               ? Column(
                   children: [
-                    Icon(destination.icon, color: GeeColors.accentLight),
+                    Icon(
+                      destination.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       destination.label,
@@ -393,7 +401,10 @@ class _QuickLink extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    Icon(destination.icon, color: GeeColors.accentLight),
+                    Icon(
+                      destination.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(

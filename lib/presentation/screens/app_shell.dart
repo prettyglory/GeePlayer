@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gee_player/app/gee_colors.dart';
 import 'package:gee_player/app/media_library_providers.dart';
 import 'package:gee_player/app/playback_controller.dart';
 import 'package:gee_player/app/playback_providers.dart';
@@ -11,7 +12,7 @@ import 'package:gee_player/presentation/screens/favorites_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/screens/media_library_screen.dart';
 import 'package:gee_player/presentation/screens/playback_screen.dart';
-import 'package:gee_player/presentation/screens/subtitle_settings_screen.dart';
+import 'package:gee_player/presentation/screens/settings_screen.dart';
 import 'package:gee_player/presentation/widgets/gee_logo.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 
@@ -38,7 +39,7 @@ class _AppShellState extends ConsumerState<AppShell>
       ref.invalidate(mediaLibraryProvider);
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      ref.read(playbackControllerProvider).saveProgress();
+      unawaited(ref.read(playbackControllerProvider).handleAppPaused());
     }
   }
 
@@ -73,7 +74,7 @@ class _AppShellState extends ConsumerState<AppShell>
                     key: ValueKey(_selected),
                     destination: _selected,
                   ),
-                  AppDestination.settings => const SubtitleSettingsScreen(
+                  AppDestination.settings => const SettingsScreen(
                     key: ValueKey(AppDestination.settings),
                   ),
                   AppDestination.favorites => const FavoritesScreen(
@@ -95,7 +96,9 @@ class _AppShellState extends ConsumerState<AppShell>
                         children: [
                           SafeArea(
                             child: NavigationRail(
-                              backgroundColor: GeeColors.surface,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainer,
                               selectedIndex: _selected.index,
                               onDestinationSelected: _select,
                               labelType: NavigationRailLabelType.all,
@@ -133,7 +136,9 @@ class _AppShellState extends ConsumerState<AppShell>
                   children: [
                     _MiniPlayer(controller: playback),
                     NavigationBar(
-                      backgroundColor: GeeColors.surface,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainer,
                       selectedIndex: _selected.index,
                       onDestinationSelected: _select,
                       labelBehavior:
@@ -172,7 +177,7 @@ class _MiniPlayer extends StatelessWidget {
         final media = controller.current;
         if (media == null) return const SizedBox.shrink();
         return Material(
-          color: GeeColors.surfaceRaised,
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
           child: InkWell(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const PlaybackScreen()),
