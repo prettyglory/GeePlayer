@@ -268,10 +268,27 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   }
 
   Future<void> _remove(LocalMedia media) async {
-    await ref
-        .read(mediaCollectionsProvider.notifier)
-        .removeFromPlaylist(widget.playlist.id, media.id);
-    await _reload();
+    final confirmed = await _confirmDestructiveAction(
+      context,
+      title: 'Remove ${media.title}?',
+      message:
+          'This item will be removed from ${widget.playlist.name}. The media file will stay on your device.',
+      confirmLabel: 'Remove',
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      await ref
+          .read(mediaCollectionsProvider.notifier)
+          .removeFromPlaylist(widget.playlist.id, media.id);
+      await _reload();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not remove the playlist item.')),
+        );
+      }
+    }
   }
 
   Future<void> _reorder(int oldIndex, int newIndex) async {

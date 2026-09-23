@@ -143,4 +143,52 @@ void main() {
     expect(find.text('One'), findsOneWidget);
     expect(find.text('Two'), findsOneWidget);
   });
+
+  testWidgets('removing a playlist item requires confirmation', (tester) async {
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    const song = LocalMedia(
+      id: 'audio:remove',
+      kind: MediaKind.audio,
+      uri: 'content://audio/remove',
+      fileName: 'Keep Me.mp3',
+      folderPath: 'Music',
+    );
+    final playlistId = await database.createPlaylist('Favorites mix');
+    await database.addToPlaylist(playlistId, song);
+    final playlist = (await database.savedPlaylists()).single;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          playbackDatabaseProvider.overrideWithValue(database),
+          localMediaRepositoryProvider.overrideWith(
+            (ref) => FakeMediaRepository(snapshot: emptyAccessibleLibrary()),
+          ),
+        ],
+        child: MaterialApp(home: PlaylistScreen(playlist: playlist)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Remove from playlist'));
+    await tester.pumpAndSettle();
+    expect(find.text('Remove Keep Me?'), findsOneWidget);
+    expect(find.textContaining('media file will stay'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect((await database.playlistMedia(playlistId)).single.id, song.id);
+
+    await tester.tap(find.byTooltip('Remove from playlist'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+    await tester.pumpAndSettle();
+
+    expect(await database.playlistMedia(playlistId), isEmpty);
+    expect(
+      find.text('Add media to this playlist from your library.'),
+      findsOneWidget,
+    );
+  });
 }
