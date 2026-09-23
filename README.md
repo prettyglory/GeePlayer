@@ -123,6 +123,8 @@ flutter build appbundle --release
 
 Back up the keystore and passwords securely. Neither `android/key.properties` nor keystore files should be committed to Git.
 
+Before publishing, complete the [Android release checklist](docs/RELEASE_CHECKLIST.md) and host the [privacy notice](PRIVACY.md) at a stable public URL for the store listing.
+
 ## Known limitations
 
 - Automatic local subtitle discovery covers embedded tracks, previously imported or downloaded subtitles, and readable indexed subtitle files beside the video. Android's scoped storage does not expose every external subtitle beside a MediaStore video; use the Android file picker to import a hidden file.
