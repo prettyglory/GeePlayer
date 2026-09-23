@@ -55,32 +55,72 @@ Future<String?> showPlaylistNameDialog(
   String title = 'New playlist',
   String initialValue = '',
 }) async {
-  final controller = TextEditingController(text: initialValue);
   final result = await showDialog<String>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
+    builder: (_) =>
+        _PlaylistNameDialog(title: title, initialValue: initialValue),
+  );
+  return result?.trim().isEmpty ?? true ? null : result!.trim();
+}
+
+class _PlaylistNameDialog extends StatefulWidget {
+  const _PlaylistNameDialog({required this.title, required this.initialValue});
+
+  final String title;
+  final String initialValue;
+
+  @override
+  State<_PlaylistNameDialog> createState() => _PlaylistNameDialogState();
+}
+
+class _PlaylistNameDialogState extends State<_PlaylistNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.isNotEmpty) Navigator.pop(context, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
+        textInputAction: TextInputAction.done,
         decoration: const InputDecoration(labelText: 'Playlist name'),
-        onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        onSubmitted: (_) => _submit(),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text.trim()),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _controller,
+          builder: (context, value, child) => FilledButton(
+            onPressed: value.text.trim().isEmpty ? null : _submit,
+            child: child,
+          ),
           child: const Text('Save'),
         ),
       ],
-    ),
-  );
-  controller.dispose();
-  return result?.trim().isEmpty ?? true ? null : result!.trim();
+    );
+  }
 }
 
 Future<void> showAddToPlaylist(

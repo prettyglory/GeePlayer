@@ -11,6 +11,44 @@ import 'package:gee_player/presentation/screens/favorites_screen.dart';
 import '../support/fake_media_repository.dart';
 
 void main() {
+  testWidgets('playlist name must contain visible characters', (tester) async {
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          playbackDatabaseProvider.overrideWithValue(database),
+          localMediaRepositoryProvider.overrideWith(
+            (ref) => FakeMediaRepository(snapshot: emptyAccessibleLibrary()),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: FavoritesScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Playlists'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create playlist'));
+    await tester.pumpAndSettle();
+
+    final saveButton = find.widgetWithText(FilledButton, 'Save');
+    expect(tester.widget<FilledButton>(saveButton).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(saveButton).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField), 'Road trip');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(saveButton).onPressed, isNotNull);
+
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Road trip'), findsOneWidget);
+  });
+
   testWidgets('clearing playback history requires confirmation', (
     tester,
   ) async {
