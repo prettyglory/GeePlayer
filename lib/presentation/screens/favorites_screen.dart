@@ -118,9 +118,18 @@ class _Playlists extends ConsumerWidget {
           onPressed: () async {
             final name = await showPlaylistNameDialog(context);
             if (name != null) {
-              await ref
-                  .read(mediaCollectionsProvider.notifier)
-                  .createPlaylist(name);
+              try {
+                await ref
+                    .read(mediaCollectionsProvider.notifier)
+                    .createPlaylist(name);
+                if (context.mounted) {
+                  _showLatestMessage(context, 'Playlist created.');
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  _showLatestMessage(context, 'Could not create playlist.');
+                }
+              }
             }
           },
           icon: const Icon(Icons.playlist_add_rounded),
@@ -148,9 +157,21 @@ class _Playlists extends ConsumerWidget {
                       initialValue: playlist.name,
                     );
                     if (name != null) {
-                      await ref
-                          .read(mediaCollectionsProvider.notifier)
-                          .renamePlaylist(playlist.id, name);
+                      try {
+                        await ref
+                            .read(mediaCollectionsProvider.notifier)
+                            .renamePlaylist(playlist.id, name);
+                        if (context.mounted) {
+                          _showLatestMessage(context, 'Playlist renamed.');
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          _showLatestMessage(
+                            context,
+                            'Could not rename playlist.',
+                          );
+                        }
+                      }
                     }
                   } else if (action == 'delete') {
                     final confirmed = await _confirmDestructiveAction(
@@ -160,9 +181,21 @@ class _Playlists extends ConsumerWidget {
                       confirmLabel: 'Delete',
                     );
                     if (confirmed) {
-                      await ref
-                          .read(mediaCollectionsProvider.notifier)
-                          .deletePlaylist(playlist.id);
+                      try {
+                        await ref
+                            .read(mediaCollectionsProvider.notifier)
+                            .deletePlaylist(playlist.id);
+                        if (context.mounted) {
+                          _showLatestMessage(context, 'Playlist deleted.');
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          _showLatestMessage(
+                            context,
+                            'Could not delete playlist.',
+                          );
+                        }
+                      }
                     }
                   }
                 },
@@ -405,6 +438,12 @@ Future<bool> _confirmDestructiveAction(
         ),
       ) ??
       false;
+}
+
+void _showLatestMessage(BuildContext context, String message) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(SnackBar(content: Text(message)));
 }
 
 void _openMedia(

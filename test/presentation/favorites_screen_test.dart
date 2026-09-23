@@ -47,6 +47,55 @@ void main() {
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
     expect(find.text('Road trip'), findsOneWidget);
+    expect(find.text('Playlist created.'), findsOneWidget);
+  });
+
+  testWidgets('renaming and deleting a playlist provide feedback', (
+    tester,
+  ) async {
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.createPlaylist('Road trip');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          playbackDatabaseProvider.overrideWithValue(database),
+          localMediaRepositoryProvider.overrideWith(
+            (ref) => FakeMediaRepository(snapshot: emptyAccessibleLibrary()),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: FavoritesScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Playlists'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Commute');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Commute'), findsOneWidget);
+    expect(find.text('Playlist renamed.'), findsOneWidget);
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Commute?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Playlist deleted.'), findsOneWidget);
+    expect(
+      find.text('Create a playlist to organize your music and videos.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('clearing playback history requires confirmation', (
