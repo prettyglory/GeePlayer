@@ -155,6 +155,25 @@ class _StorageSettingsPanelState extends ConsumerState<_StorageSettingsPanel> {
               value.isEmpty ? 'No cached subtitles' : 'Clear subtitle cache',
             ),
           ),
+        const SizedBox(height: 28),
+        Text('About', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('Open-source licenses'),
+            subtitle: const Text(
+              'View license terms for Flutter and included packages.',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: 'Gee Player',
+              applicationLegalese:
+                  'See the package entries below for license terms.',
+            ),
+          ),
+        ),
       ],
     );
   }

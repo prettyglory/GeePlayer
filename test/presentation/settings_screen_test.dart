@@ -46,6 +46,14 @@ void main() {
 
     expect(find.text('App storage'), findsOneWidget);
     expect(find.text('Clear subtitle cache'), findsOneWidget);
+    expect(find.text('Open-source licenses'), findsOneWidget);
+
+    await tester.tap(find.text('Open-source licenses'));
+    await tester.pumpAndSettle();
+    expect(find.text('Licenses'), findsOneWidget);
+    expect(find.text('Gee Player'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Clear subtitle cache'));
     await tester.pumpAndSettle();
