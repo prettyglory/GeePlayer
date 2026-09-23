@@ -372,6 +372,8 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                         const SizedBox(height: 20),
                         _timeline(controller),
                         _controls(controller),
+                        if (media.kind == MediaKind.audio)
+                          _audioOptions(controller),
                         if (media.kind == MediaKind.video)
                           _videoOptions(controller),
                         if (media.kind == MediaKind.video)
@@ -679,18 +681,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           icon: const Icon(Icons.closed_caption_rounded),
           label: const Text('Subtitles'),
         ),
-        DropdownButton<double>(
-          value: controller.player.state.rate,
-          onChanged: (value) {
-            if (value != null) controller.setRate(value);
-          },
-          items: const [0.5, 1.0, 1.25, 1.5, 2.0]
-              .map(
-                (rate) =>
-                    DropdownMenuItem(value: rate, child: Text('${rate}x')),
-              )
-              .toList(),
-        ),
+        _playbackSpeedPicker(controller),
         DropdownButton<double>(
           value: _aspectRatio,
           onChanged: (value) {
@@ -718,6 +709,37 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
           onPressed: _toggleFullscreen,
           icon: const Icon(Icons.fullscreen_rounded),
         ),
+      ],
+    );
+  }
+
+  Widget _audioOptions(PlaybackController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Speed'),
+          const SizedBox(width: 10),
+          _playbackSpeedPicker(controller),
+        ],
+      ),
+    );
+  }
+
+  Widget _playbackSpeedPicker(PlaybackController controller) {
+    final currentRate = controller.player.state.rate;
+    final rates = applicationPlaybackSpeeds.contains(currentRate)
+        ? applicationPlaybackSpeeds
+        : ([...applicationPlaybackSpeeds, currentRate]..sort());
+    return DropdownButton<double>(
+      value: currentRate,
+      onChanged: (value) {
+        if (value != null) controller.setRate(value);
+      },
+      items: [
+        for (final rate in rates)
+          DropdownMenuItem(value: rate, child: Text('${rate}x')),
       ],
     );
   }
