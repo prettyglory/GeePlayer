@@ -4,7 +4,7 @@ Gee Player is an Android Flutter application for playing locally stored video an
 
 ## Project status
 
-The Phase 9 storage-management implementation is in place, with device playback checks still pending. Gee Player has branded launch screens, a customizable dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
+The Phase 9 storage-management implementation is in place. Baseline permission, MediaStore discovery, audio playback, queue advance, video-player UI, restart, and license checks have passed on an Android 15 emulator; physical-device and representative-codec checks remain. See the [emulator validation report](docs/EMULATOR_VALIDATION.md). Gee Player has branded launch screens, a customizable dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
 
 ## Current interface
 
@@ -68,11 +68,11 @@ With a phone or emulator connected, run `flutter devices` and `flutter run -d DE
 3. Deny access, use App settings to grant it, return to Gee Player, and confirm the library refreshes.
 4. Add or delete a media file outside Gee Player, return to the app, and confirm the list updates. On Android 14 or later, also test access to selected videos only.
 
-These steps still need a connected device; they have not been run in the current Windows environment.
+The baseline permission, denial/retry, full-access, refresh, and indexed-media discovery flows passed on an Android 15 emulator. Selected-video-only access and the Android App Settings round trip still need a physical-device pass.
 
 ## Device check for Phase 4
 
-With a phone or emulator connected, play a local video from Videos and a song from Music. Verify pause, seek, skip, stop, speed, fullscreen rotation, and the mini-player. Play a song from a folder and check that Next stays within audio files. Pause a video after at least five seconds, close and reopen the app, then tap the same video to verify resume. Play to the end and reopen it to verify it starts at the beginning. Test an unsupported or damaged file to confirm an error appears without an app crash. These runtime checks are still pending.
+With a phone or emulator connected, play a local video from Videos and a song from Music. Verify pause, seek, skip, stop, speed, fullscreen rotation, and the mini-player. Play a song from a folder and check that Next stays within audio files. Pause a video after at least five seconds, close and reopen the app, then tap the same video to verify resume. Play to the end and reopen it to verify it starts at the beginning. Test an unsupported or damaged file to confirm an error appears without an app crash. Indexed WAV playback and automatic queue advance passed on the Android 15 emulator; the remaining runtime checks still require representative media and a physical device.
 
 ## Device check for Phase 5
 
@@ -96,7 +96,7 @@ Download and import several subtitles, open Settings > Storage, and confirm the 
 
 ## Quality checks
 
-Run `flutter analyze` and `flutter test` after changes. Tests cover media mapping, search and sorting, permissions, folder navigation, Home previews, foreground refresh, playback source resolution, progress storage, favorites, playlists, history, background media-state publishing, subtitle matching, cache extraction, and SubDL request handling. A development APK can be built with `flutter build apk --debug`; release signing and release builds will be verified in a later phase.
+Run `flutter analyze` and `flutter test` after changes. Tests cover media mapping, search and sorting, permissions, folder navigation, Home previews, foreground refresh, playback source resolution, progress storage, favorites, playlists, history, background media-state publishing, subtitle matching, cache extraction, and SubDL request handling. The development APK builds and runs on Android 15. An unsigned release App Bundle also builds for structural verification; a distributable bundle still requires the owner's upload key.
 
 ## API configuration
 
@@ -130,4 +130,4 @@ Before publishing, complete the [Android release checklist](docs/RELEASE_CHECKLI
 - Automatic local subtitle discovery covers embedded tracks, previously imported or downloaded subtitles, and readable indexed subtitle files beside the video. Android's scoped storage does not expose every external subtitle beside a MediaStore video; use the Android file picker to import a hidden file.
 - Android MediaStore shows indexed video and audio that the user has granted access to. Android 14 and later can grant access to selected videos only. [Android media access](https://developer.android.com/training/data-storage/shared/media) and [partial video access](https://developer.android.com/about/versions/14/changes/partial-photo-video-access) explain these platform rules. Files outside the indexed collections and subtitle files are not included in this scan.
 - Video thumbnails and embedded audio artwork are best effort on Android. Files without readable artwork show a format icon. Native playback and codec support still need device verification; a recognized extension does not guarantee that its codec is playable.
-- Android debug compilation and automated tests passed on Windows. Background playback, notification actions, gestures, Picture in Picture, and audio interruptions still need verification on an Android device or emulator.
+- Android debug compilation, automated tests, and the documented baseline Android 15 emulator checks passed on Windows. Audible output, moving-video codecs, background controls, gestures, Picture-in-Picture behavior, and audio interruptions still need physical-device verification.

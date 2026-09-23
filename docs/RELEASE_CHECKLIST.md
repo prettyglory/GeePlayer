@@ -2,9 +2,9 @@
 
 ## Automated gates
 
-- [ ] `flutter analyze` reports no issues.
-- [ ] `flutter test` passes the complete suite.
-- [ ] `flutter build apk --debug` succeeds.
+- [x] `flutter analyze` reports no issues.
+- [x] `flutter test` passes the complete suite.
+- [x] `flutter build apk --debug` succeeds.
 - [ ] `flutter build appbundle --release` succeeds with the owner upload key.
 - [ ] `jarsigner -verify -verbose -certs build/app/outputs/bundle/release/app-release.aab` reports a valid non-debug signer.
 
@@ -41,3 +41,5 @@
 ## Current local verification
 
 The repository is configured so a release variant never falls back to the Android debug key. With no `android/key.properties`, Gradle's signing report shows the release signing configuration as `null`. An unsigned release App Bundle can be built for structural verification, but it must not be uploaded as the production artifact.
+
+The completed Android 15 checks and their physical-device limitations are recorded in [EMULATOR_VALIDATION.md](EMULATOR_VALIDATION.md).
