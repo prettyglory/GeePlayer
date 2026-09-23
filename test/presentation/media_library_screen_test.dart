@@ -113,6 +113,50 @@ void main() {
     expect(repository.openSettingsCount, 1);
   });
 
+  testWidgets('favorite actions provide feedback and persist changes', (
+    tester,
+  ) async {
+    final repository = FakeMediaRepository(
+      snapshot: const LibrarySnapshot(
+        items: [trip],
+        access: MediaAccess(
+          videos: MediaAccessLevel.granted,
+          audio: MediaAccessLevel.granted,
+        ),
+      ),
+    );
+    final database = PlaybackDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localMediaRepositoryProvider.overrideWith((ref) => repository),
+          playbackDatabaseProvider.overrideWithValue(database),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: MediaLibraryScreen(destination: AppDestination.videos),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Media actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add to favorites'));
+    await tester.pumpAndSettle();
+    expect(find.text('Added to favorites'), findsOneWidget);
+    expect(await database.favoriteIds(), contains(trip.id));
+
+    await tester.tap(find.byTooltip('Media actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove favorite'));
+    await tester.pumpAndSettle();
+    expect(find.text('Removed from favorites'), findsOneWidget);
+    expect(await database.favoriteIds(), isNot(contains(trip.id)));
+  });
+
   testWidgets('folder opens its discovered media', (tester) async {
     final repository = FakeMediaRepository(
       snapshot: const LibrarySnapshot(

@@ -16,9 +16,30 @@ class MediaActionsButton extends ConsumerWidget {
       tooltip: 'Media actions',
       onSelected: (action) async {
         if (action == _MediaAction.favorite) {
-          await ref
-              .read(mediaCollectionsProvider.notifier)
-              .toggleFavorite(media);
+          try {
+            await ref
+                .read(mediaCollectionsProvider.notifier)
+                .toggleFavorite(media);
+            if (context.mounted) {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.hideCurrentSnackBar();
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    favorite ? 'Removed from favorites' : 'Added to favorites',
+                  ),
+                ),
+              );
+            }
+          } catch (_) {
+            if (context.mounted) {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.hideCurrentSnackBar();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Could not update favorites')),
+              );
+            }
+          }
         } else {
           if (context.mounted) await showAddToPlaylist(context, ref, media);
         }
