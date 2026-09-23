@@ -67,6 +67,18 @@ void main() {
       video.id,
     ]);
     expect((await database.savedPlaylists()).single.itemCount, 2);
+
+    await database.reorderPlaylistItem(playlist, video.id, 0);
+    expect((await database.playlistMedia(playlist)).map((item) => item.id), [
+      video.id,
+      song.id,
+    ]);
+
+    await database.reorderPlaylistItem(playlist, video.id, 20);
+    expect((await database.playlistMedia(playlist)).map((item) => item.id), [
+      song.id,
+      video.id,
+    ]);
   });
 
   test('builds playback history and continue watching', () async {

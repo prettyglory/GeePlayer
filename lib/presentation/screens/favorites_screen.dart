@@ -153,9 +153,17 @@ class _Playlists extends ConsumerWidget {
                           .renamePlaylist(playlist.id, name);
                     }
                   } else if (action == 'delete') {
-                    await ref
-                        .read(mediaCollectionsProvider.notifier)
-                        .deletePlaylist(playlist.id);
+                    final confirmed = await _confirmDestructiveAction(
+                      context,
+                      title: 'Delete ${playlist.name}?',
+                      message: 'The playlist will be deleted. Its media files will stay on your device.',
+                      confirmLabel: 'Delete',
+                    );
+                    if (confirmed) {
+                      await ref
+                          .read(mediaCollectionsProvider.notifier)
+                          .deletePlaylist(playlist.id);
+                    }
                   }
                 },
                 itemBuilder: (context) => const [
@@ -195,8 +203,19 @@ class _History extends ConsumerWidget {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
-            onPressed: () =>
-                ref.read(mediaCollectionsProvider.notifier).clearHistory(),
+            onPressed: () async {
+              final confirmed = await _confirmDestructiveAction(
+                context,
+                title: 'Clear playback history?',
+                message: 'Recently played items will be removed. Favorites and playlists will not change.',
+                confirmLabel: 'Clear',
+              );
+              if (confirmed) {
+                await ref
+                    .read(mediaCollectionsProvider.notifier)
+                    .clearHistory();
+              }
+            },
             icon: const Icon(Icons.delete_sweep_outlined),
             label: const Text('Clear history'),
           ),
@@ -222,7 +241,9 @@ class PlaylistScreen extends ConsumerStatefulWidget {
 }
 
 class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
-  late Future<List<LocalMedia>> _items;
+  List<LocalMedia>? _items;
+  Object? _error;
+  bool _reordering = false;
 
   @override
   void initState() {
@@ -230,52 +251,143 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     _reload();
   }
 
-  void _reload() {
-    _items = ref
+  Future<void> _reload() async {
+    try {
+      final items = await ref
+          .read(mediaCollectionsProvider.notifier)
+          .playlistMedia(widget.playlist.id);
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _error = null;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    }
+  }
+
+  Future<void> _remove(LocalMedia media) async {
+    await ref
         .read(mediaCollectionsProvider.notifier)
-        .playlistMedia(widget.playlist.id);
+        .removeFromPlaylist(widget.playlist.id, media.id);
+    await _reload();
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    final currentItems = _items;
+    if (_reordering || currentItems == null) return;
+    if (newIndex == oldIndex) return;
+
+    final reordered = List<LocalMedia>.of(currentItems);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    setState(() {
+      _items = reordered;
+      _reordering = true;
+    });
+    try {
+      await ref
+          .read(mediaCollectionsProvider.notifier)
+          .reorderPlaylistItem(widget.playlist.id, moved.id, newIndex);
+    } catch (_) {
+      await _reload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not reorder the playlist.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reordering = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.playlist.name)),
-      body: FutureBuilder<List<LocalMedia>>(
-        future: _items,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.data!;
-          if (items.isEmpty) {
-            return const MediaStatePanel(
-              status: MediaViewStatus.empty,
-              icon: Icons.playlist_add_rounded,
-              message: 'Add media to this playlist from your library.',
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: items.length,
-            itemBuilder: (context, index) => MediaListTile(
-              media: items[index],
-              trailing: IconButton(
-                tooltip: 'Remove from playlist',
-                onPressed: () async {
-                  await ref
-                      .read(mediaCollectionsProvider.notifier)
-                      .removeFromPlaylist(widget.playlist.id, items[index].id);
-                  setState(_reload);
-                },
-                icon: const Icon(Icons.remove_circle_outline_rounded),
-              ),
-              onTap: () => _openMedia(context, items, items[index]),
-            ),
-          );
-        },
-      ),
+      body: _body(),
     );
   }
+
+  Widget _body() {
+    if (_error != null) {
+      return MediaStatePanel(
+        status: MediaViewStatus.error,
+        message: 'Could not load this playlist.',
+        onRetry: _reload,
+      );
+    }
+    final items = _items;
+    if (items == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (items.isEmpty) {
+      return const MediaStatePanel(
+        status: MediaViewStatus.empty,
+        icon: Icons.playlist_add_rounded,
+        message: 'Add media to this playlist from your library.',
+      );
+    }
+    return ReorderableListView.builder(
+      padding: const EdgeInsets.all(20),
+      buildDefaultDragHandles: false,
+      itemCount: items.length,
+      onReorderItem: _reorder,
+      itemBuilder: (context, index) {
+        final media = items[index];
+        return MediaListTile(
+          key: ValueKey(media.id),
+          media: media,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Remove from playlist',
+                onPressed: () => _remove(media),
+                icon: const Icon(Icons.remove_circle_outline_rounded),
+              ),
+              ReorderableDragStartListener(
+                index: index,
+                enabled: !_reordering,
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Icon(Icons.drag_handle_rounded),
+                ),
+              ),
+            ],
+          ),
+          onTap: () => _openMedia(context, items, media),
+        );
+      },
+    );
+  }
+}
+
+Future<bool> _confirmDestructiveAction(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+}) async {
+  return await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      ) ??
+      false;
 }
 
 void _openMedia(

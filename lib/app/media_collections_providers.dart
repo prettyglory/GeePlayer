@@ -94,6 +94,15 @@ class MediaCollectionsController extends AsyncNotifier<MediaCollectionsState> {
     await refresh();
   }
 
+  Future<void> reorderPlaylistItem(
+    String playlistId,
+    String mediaId,
+    int newIndex,
+  ) async {
+    await _database.reorderPlaylistItem(playlistId, mediaId, newIndex);
+    await refresh();
+  }
+
   Future<List<LocalMedia>> playlistMedia(String playlistId) =>
       _database.playlistMedia(playlistId);
 

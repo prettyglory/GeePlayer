@@ -241,6 +241,37 @@ class PlaybackDatabase extends _$PlaybackDatabase {
           ))
           .go();
 
+  Future<void> reorderPlaylistItem(
+    String playlistId,
+    String mediaId,
+    int newIndex,
+  ) => transaction(() async {
+    final items =
+        await (select(playlistItems)
+              ..where((table) => table.playlistId.equals(playlistId))
+              ..orderBy([(table) => OrderingTerm.asc(table.position)]))
+            .get();
+    final oldIndex = items.indexWhere((item) => item.mediaId == mediaId);
+    if (oldIndex < 0) return;
+
+    final moved = items.removeAt(oldIndex);
+    final targetIndex = newIndex.clamp(0, items.length);
+    items.insert(targetIndex, moved);
+
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      if (item.position == index) continue;
+      await (update(playlistItems)..where(
+            (table) =>
+                table.playlistId.equals(playlistId) &
+                table.mediaId.equals(item.mediaId),
+          ))
+          .write(PlaylistItemsCompanion(position: Value(index)));
+    }
+    await (update(playlists)..where((table) => table.id.equals(playlistId)))
+        .write(PlaylistsCompanion(updatedAt: Value(DateTime.now())));
+  });
+
   Future<List<SavedPlaylist>> savedPlaylists() async {
     final count = playlistItems.mediaId.count();
     final query =
