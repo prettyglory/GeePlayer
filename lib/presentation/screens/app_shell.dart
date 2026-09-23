@@ -9,7 +9,6 @@ import 'package:gee_player/app/playback_sleep_timer.dart';
 import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/domain/media/local_media.dart';
 import 'package:gee_player/presentation/navigation/app_destination.dart';
-import 'package:gee_player/presentation/screens/feature_preview_screen.dart';
 import 'package:gee_player/presentation/screens/favorites_screen.dart';
 import 'package:gee_player/presentation/screens/home_screen.dart';
 import 'package:gee_player/presentation/screens/media_library_screen.dart';
@@ -65,29 +64,24 @@ class _AppShellState extends ConsumerState<AppShell>
         final wide = constraints.maxWidth >= 700;
         final content = AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
-          child: _selected == AppDestination.home
-              ? HomeScreen(
-                  key: const ValueKey(AppDestination.home),
-                  onNavigate: (destination) => _select(destination.index),
-                )
-              : switch (_selected) {
-                  AppDestination.videos ||
-                  AppDestination.music ||
-                  AppDestination.folders => MediaLibraryScreen(
-                    key: ValueKey(_selected),
-                    destination: _selected,
-                  ),
-                  AppDestination.settings => const SettingsScreen(
-                    key: ValueKey(AppDestination.settings),
-                  ),
-                  AppDestination.favorites => const FavoritesScreen(
-                    key: ValueKey(AppDestination.favorites),
-                  ),
-                  _ => FeaturePreviewScreen(
-                    key: ValueKey(_selected),
-                    destination: _selected,
-                  ),
-                },
+          child: switch (_selected) {
+            AppDestination.home => HomeScreen(
+              key: const ValueKey(AppDestination.home),
+              onNavigate: (destination) => _select(destination.index),
+            ),
+            AppDestination.videos ||
+            AppDestination.music ||
+            AppDestination.folders => MediaLibraryScreen(
+              key: ValueKey(_selected),
+              destination: _selected,
+            ),
+            AppDestination.favorites => const FavoritesScreen(
+              key: ValueKey(AppDestination.favorites),
+            ),
+            AppDestination.settings => const SettingsScreen(
+              key: ValueKey(AppDestination.settings),
+            ),
+          },
         );
 
         return Scaffold(
