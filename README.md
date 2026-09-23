@@ -104,7 +104,24 @@ No API key is needed for local playback or imported subtitles. For online search
 
 ## Builds and platform notes
 
-The Android application ID is `com.gee.player`. The project targets Android only. Distribution signing has not been configured, and no release APK has been produced.
+The Android application ID is `com.gee.player`. The project targets Android only. Release builds never use the Android debug key. Without local upload-key configuration, Gradle can produce an unsigned artifact for verification, but it cannot be distributed through Google Play.
+
+## Release signing
+
+Create the upload keystore interactively so its passwords do not appear in shell history:
+
+```powershell
+keytool -genkeypair -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+Copy-Item android/key.properties.example android/key.properties
+```
+
+Replace every placeholder in `android/key.properties`, then create the Play Store bundle:
+
+```powershell
+flutter build appbundle --release
+```
+
+Back up the keystore and passwords securely. Neither `android/key.properties` nor keystore files should be committed to Git.
 
 ## Known limitations
 

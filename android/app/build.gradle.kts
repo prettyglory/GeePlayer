@@ -1,8 +1,23 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    FileInputStream(keystorePropertiesFile).use(keystoreProperties::load)
+}
+
+fun releaseSigningProperty(name: String): String =
+    requireNotNull(keystoreProperties.getProperty(name)) {
+        "Missing $name in ${keystorePropertiesFile.path}"
+    }
 
 android {
     namespace = "com.gee.player"
@@ -28,11 +43,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = releaseSigningProperty("keyAlias")
+                keyPassword = releaseSigningProperty("keyPassword")
+                storeFile = file(releaseSigningProperty("storeFile"))
+                storePassword = releaseSigningProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Missing local signing material produces an unsigned artifact for
+            // verification instead of silently publishing with the debug key.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                null
+            }
         }
     }
 }
