@@ -17,6 +17,17 @@ class StoredSubtitle {
   final String source;
 }
 
+class SubtitleCacheInfo {
+  const SubtitleCacheInfo({required this.fileCount, required this.totalBytes});
+
+  const SubtitleCacheInfo.empty() : fileCount = 0, totalBytes = 0;
+
+  final int fileCount;
+  final int totalBytes;
+
+  bool get isEmpty => fileCount == 0;
+}
+
 class SubtitleStore {
   SubtitleStore({this.root});
 
@@ -62,6 +73,29 @@ class SubtitleStore {
           : 1,
     );
     return found;
+  }
+
+  Future<SubtitleCacheInfo> cacheInfo() async {
+    final directory = await _directory();
+    var fileCount = 0;
+    var totalBytes = 0;
+    await for (final entry in directory.list()) {
+      if (entry is! File) continue;
+      try {
+        totalBytes += await entry.length();
+        fileCount++;
+      } on FileSystemException {
+        // A file can disappear while storage is being measured.
+      }
+    }
+    return SubtitleCacheInfo(fileCount: fileCount, totalBytes: totalBytes);
+  }
+
+  Future<void> clearCache() async {
+    final directory = await _directory();
+    await for (final entry in directory.list()) {
+      if (entry is File) await entry.delete();
+    }
   }
 
   Future<StoredSubtitle> importFile(String mediaId, XFile source) async {

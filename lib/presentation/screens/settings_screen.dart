@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gee_player/app/application_settings_providers.dart';
+import 'package:gee_player/app/subtitle_providers.dart';
 import 'package:gee_player/data/settings/application_preferences.dart';
+import 'package:gee_player/data/subtitles/subtitle_store.dart';
 import 'package:gee_player/presentation/screens/subtitle_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -10,7 +12,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -26,6 +28,7 @@ class SettingsScreen extends StatelessWidget {
               tabs: [
                 Tab(text: 'General'),
                 Tab(text: 'Subtitles'),
+                Tab(text: 'Storage'),
               ],
             ),
             const Expanded(
@@ -33,6 +36,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   _GeneralSettingsPanel(),
                   SubtitleSettingsScreen(embedded: true),
+                  _StorageSettingsPanel(),
                 ],
               ),
             ),
@@ -40,6 +44,133 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _StorageSettingsPanel extends ConsumerStatefulWidget {
+  const _StorageSettingsPanel();
+
+  @override
+  ConsumerState<_StorageSettingsPanel> createState() =>
+      _StorageSettingsPanelState();
+}
+
+class _StorageSettingsPanelState extends ConsumerState<_StorageSettingsPanel> {
+  bool _clearing = false;
+
+  Future<void> _clearCache(SubtitleCacheInfo cache) async {
+    if (_clearing || cache.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear cached subtitles?'),
+        content: Text(
+          '${cache.fileCount} saved ${cache.fileCount == 1 ? 'file' : 'files'} '
+          'will be removed. Original media and external subtitle files will not change.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _clearing = true);
+    try {
+      await ref.read(subtitleCacheInfoProvider.notifier).clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cached subtitles cleared.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not clear subtitle cache.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _clearing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cache = ref.watch(subtitleCacheInfoProvider);
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text('App storage', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        const Text(
+          'Gee Player only clears copies stored inside the app. Your videos, music, and original subtitle files are never deleted.',
+        ),
+        const SizedBox(height: 20),
+        Card(
+          child: switch (cache) {
+            AsyncData(:final value) => ListTile(
+              leading: const Icon(Icons.closed_caption_rounded),
+              title: const Text('Cached subtitles'),
+              subtitle: Text(_cacheDescription(value)),
+              trailing: IconButton(
+                tooltip: 'Refresh storage usage',
+                onPressed: _clearing
+                    ? null
+                    : () => ref
+                          .read(subtitleCacheInfoProvider.notifier)
+                          .refresh(),
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ),
+            AsyncError() => ListTile(
+              leading: const Icon(Icons.error_outline_rounded),
+              title: const Text('Could not read subtitle storage'),
+              trailing: TextButton(
+                onPressed: () =>
+                    ref.read(subtitleCacheInfoProvider.notifier).refresh(),
+                child: const Text('Try again'),
+              ),
+            ),
+            _ => const ListTile(
+              leading: CircularProgressIndicator(),
+              title: Text('Measuring subtitle storage...'),
+            ),
+          },
+        ),
+        const SizedBox(height: 12),
+        if (cache.value case final value?)
+          FilledButton.tonalIcon(
+            onPressed: _clearing || value.isEmpty
+                ? null
+                : () => _clearCache(value),
+            icon: const Icon(Icons.delete_sweep_outlined),
+            label: Text(
+              value.isEmpty ? 'No cached subtitles' : 'Clear subtitle cache',
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _cacheDescription(SubtitleCacheInfo cache) {
+    final count =
+        '${cache.fileCount} ${cache.fileCount == 1 ? 'file' : 'files'}';
+    return '$count • ${_formatBytes(cache.totalBytes)}';
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '$bytes B';
   }
 }
 

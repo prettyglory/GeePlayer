@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gee_player/app/application_settings_providers.dart';
+import 'package:gee_player/app/subtitle_providers.dart';
+import 'package:gee_player/data/subtitles/subtitle_store.dart';
 import 'package:gee_player/presentation/screens/settings_screen.dart';
 
 import '../support/fake_application_preferences.dart';
@@ -16,6 +18,9 @@ void main() {
       ProviderScope(
         overrides: [
           applicationPreferencesProvider.overrideWithValue(preferences),
+          subtitleCacheInfoProvider.overrideWith(
+            _FakeSubtitleCacheController.new,
+          ),
         ],
         child: const MaterialApp(home: Scaffold(body: SettingsScreen())),
       ),
@@ -35,5 +40,30 @@ void main() {
 
     expect(find.text('SubDL API key'), findsOneWidget);
     expect(find.text('Subtitle appearance'), findsOneWidget);
+
+    await tester.tap(find.text('Storage'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('App storage'), findsOneWidget);
+    expect(find.text('Clear subtitle cache'), findsOneWidget);
+
+    await tester.tap(find.text('Clear subtitle cache'));
+    await tester.pumpAndSettle();
+    expect(find.text('Clear cached subtitles?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No cached subtitles'), findsOneWidget);
   });
+}
+
+class _FakeSubtitleCacheController extends SubtitleCacheController {
+  @override
+  Future<SubtitleCacheInfo> build() async =>
+      const SubtitleCacheInfo(fileCount: 2, totalBytes: 2048);
+
+  @override
+  Future<void> clear() async {
+    state = const AsyncData(SubtitleCacheInfo.empty());
+  }
 }

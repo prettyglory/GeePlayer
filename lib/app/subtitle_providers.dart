@@ -16,6 +16,35 @@ final companionSubtitleFinderProvider = Provider<CompanionSubtitleFinder>(
   (ref) => const AndroidCompanionSubtitleFinder(),
 );
 
+final subtitleCacheInfoProvider =
+    AsyncNotifierProvider<SubtitleCacheController, SubtitleCacheInfo>(
+      SubtitleCacheController.new,
+      retry: (retryCount, error) => null,
+    );
+
+class SubtitleCacheController extends AsyncNotifier<SubtitleCacheInfo> {
+  SubtitleStore get _store => ref.read(subtitleStoreProvider);
+
+  @override
+  Future<SubtitleCacheInfo> build() => _store.cacheInfo();
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(_store.cacheInfo);
+  }
+
+  Future<void> clear() async {
+    final previous = state.value ?? const SubtitleCacheInfo.empty();
+    state = const AsyncLoading();
+    try {
+      await _store.clearCache();
+      state = const AsyncData(SubtitleCacheInfo.empty());
+    } catch (error, stackTrace) {
+      state = AsyncData(previous);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+}
+
 final subtitleAppearanceProvider =
     AsyncNotifierProvider<SubtitleAppearanceController, SubtitleAppearance>(
       SubtitleAppearanceController.new,

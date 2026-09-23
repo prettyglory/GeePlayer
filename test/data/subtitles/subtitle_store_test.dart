@@ -89,4 +89,35 @@ void main() {
     final cached = await store.cachedFor('video:1');
     expect(cached.single.source, 'Local');
   });
+
+  test('measures and clears only app-cached subtitle files', () async {
+    const candidate = SubtitleCandidate(
+      name: 'Movie.srt',
+      releaseName: 'Movie',
+      language: 'EN',
+      downloadPath: '/subtitle/raw-file',
+    );
+    await store.saveDownload(
+      'video:1',
+      'Movie.mkv',
+      candidate,
+      utf8.encode('downloaded subtitle'),
+    );
+    await store.saveCompanion(
+      'video:2',
+      'Other.srt',
+      utf8.encode('local subtitle'),
+    );
+    final unrelated = File('${root.path}${Platform.pathSeparator}keep.txt');
+    await unrelated.writeAsString('keep');
+
+    final before = await store.cacheInfo();
+    expect(before.fileCount, 2);
+    expect(before.totalBytes, greaterThan(0));
+
+    await store.clearCache();
+
+    expect((await store.cacheInfo()).isEmpty, isTrue);
+    expect(await unrelated.readAsString(), 'keep');
+  });
 }

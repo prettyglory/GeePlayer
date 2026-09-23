@@ -4,7 +4,7 @@ Gee Player is an Android Flutter application for playing locally stored video an
 
 ## Project status
 
-The Phase 8 queue and sleep-timer implementation is in place, with device playback checks still pending. Gee Player has branded launch screens, a customizable dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
+The Phase 9 storage-management implementation is in place, with device playback checks still pending. Gee Player has branded launch screens, a customizable dark Home dashboard, and navigation for Home, Videos, Music, Folders, Favorites, and Settings. Android discovers indexed videos and audio through MediaStore. Videos and songs can be opened from their library lists, saved as favorites, organized into playlists, and tracked in playback history.
 
 ## Current interface
 
@@ -15,7 +15,7 @@ The Phase 8 queue and sleep-timer implementation is in place, with device playba
 - Video and music open a shared playback screen with play, pause, stop, seek, ten-second skip, speed, and remaining-time display. Video has audio-track selection, aspect ratio, fullscreen, screen lock, double-tap seeking, brightness and volume gestures, and Android Picture in Picture. Music has an editable playing queue, previous and next controls, shuffle, repeat-one or repeat-all, and a sleep timer. A mini-player remains in the app shell while navigating and shows an active sleep-timer countdown.
 - Playback position is saved in a local Drift/SQLite database and restored when the same media is opened again. A position near the end is cleared so completed media restarts from the beginning.
 - Video subtitles can be selected from embedded tracks, discovered beside the video when Android exposes an indexed subtitle file, imported from an Android file picker, or searched and downloaded from SubDL. Local and downloaded subtitles are stored in app support storage for later offline playback. A close release-name match can load automatically; ambiguous search results remain available for manual choice. Empty searches are remembered for 24 hours.
-- Settings includes General and Subtitles tabs. General preferences cover accent color, an OLED-friendly pure-black theme, default playback speed, resume behavior, background audio, video gestures, and a reset action. The Subtitles tab securely saves your own SubDL API key, controls automatic online search and language preference, and customizes subtitle size, colors, position, and timing. Online search is off by default. Video playback continues during subtitle searches and downloads.
+- Settings includes General, Subtitles, and Storage tabs. General preferences cover accent color, an OLED-friendly pure-black theme, default playback speed, resume behavior, background audio, video gestures, and a reset action. The Subtitles tab securely saves your own SubDL API key, controls automatic online search and language preference, and customizes subtitle size, colors, position, and timing. Storage reports cached subtitle usage and can safely clear app-owned copies without deleting original media or external subtitle files. Online search is off by default. Video playback continues during subtitle searches and downloads.
 - Favorites, playlists, playback history, and Continue watching are stored in the local Drift database. Library and player menus can add media to a favorite or playlist, while the collection screen supports playlist reordering, rename, deletion, and confirmed history clearing.
 - Music uses an Android foreground media service for playback with notification, lock-screen, headset-button, audio-focus, interruption, and headphone-disconnection handling.
 - Android permission requests are scoped to video or audio. The UI handles denial, partial video access, retry, and a link to Android App Settings. The library refreshes when the app returns to the foreground.
@@ -89,6 +89,10 @@ Change the accent and pure-black theme, restart the app, and confirm both choice
 ## Device check for Phase 8
 
 Start a multi-track music queue, open the playing queue, and verify selecting, removing, and reordering upcoming tracks updates both the player and Android media controls without interrupting the current track. Start and cancel a sleep timer, confirm its countdown remains visible after navigating away from the player, and verify playback pauses when the timer expires. These runtime checks are still pending.
+
+## Device check for Phase 9
+
+Download and import several subtitles, open Settings > Storage, and confirm the displayed file count and size increase. Clear the cache, verify the count returns to zero, then confirm the original video, music, and external subtitle files remain on the device. These runtime checks are still pending.
 
 ## Quality checks
 
