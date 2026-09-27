@@ -11,6 +11,10 @@ class SubtitleProviderException implements Exception {
   String toString() => message;
 }
 
+const subdlKeyMissingMessage =
+    'Online subtitle search is not configured. Start Gee Player with '
+    '--dart-define=SUBDL_API_KEY=YOUR_KEY.';
+
 /// SubDL v1 search/download contract: https://subdl.com/api-doc
 class SubdlProvider implements SubtitleProvider {
   SubdlProvider([Dio? client])
@@ -46,9 +50,7 @@ class SubdlProvider implements SubtitleProvider {
     List<String> languages,
   ) async {
     if (apiKey.trim().isEmpty) {
-      throw const SubtitleProviderException(
-        'Add your SubDL API key in Settings.',
-      );
+      throw const SubtitleProviderException(subdlKeyMissingMessage);
     }
     try {
       final response = await _client.get<Map<String, dynamic>>(
@@ -59,6 +61,7 @@ class SubdlProvider implements SubtitleProvider {
           'languages': languages.join(','),
           'subs_per_page': 30,
           'unpack': 1,
+          'comment': 1,
           'client': 'custom_integration',
         },
       );
@@ -69,7 +72,7 @@ class SubdlProvider implements SubtitleProvider {
         );
       }
       if (body['status'] != true) {
-        throw SubtitleProviderException(_safeMessage(body['error']));
+        throw SubtitleProviderException(_safeMessage(body['error'], apiKey));
       }
       final rows = body['subtitles'];
       if (rows is! List) return const [];
@@ -103,8 +106,8 @@ class SubdlProvider implements SubtitleProvider {
     Map<String, dynamic> row,
     Map<String, dynamic> parent,
   ) {
-    final path = row['url'];
-    if (path is! String || !_validDownloadPath(path)) return null;
+    final path = _normalizeDownloadPath(row['url']);
+    if (path == null) return null;
     final name = (row['name'] ?? parent['name'] ?? '').toString();
     final release = (row['release_name'] ?? parent['release_name'] ?? name)
         .toString();
@@ -120,11 +123,29 @@ class SubdlProvider implements SubtitleProvider {
       downloadPath: path,
       season: _number(row['season'] ?? parent['season']),
       episode: _number(row['episode'] ?? parent['episode']),
+      author: _optionalText(
+        row['author'] ??
+            row['uploader'] ??
+            row['uploaded_by'] ??
+            parent['author'] ??
+            parent['uploader'] ??
+            parent['uploaded_by'],
+      ),
+      fps: _decimal(row['fps'] ?? parent['fps']),
+      format: _optionalText(row['format'] ?? parent['format']),
     );
   }
 
   static int? _number(Object? value) =>
       value is int ? value : int.tryParse('$value');
+
+  static double? _decimal(Object? value) =>
+      value is num ? value.toDouble() : double.tryParse('$value');
+
+  static String? _optionalText(Object? value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
 
   static String? _languageCode(String? value) {
     if (value == null) return null;
@@ -135,11 +156,21 @@ class SubdlProvider implements SubtitleProvider {
     };
   }
 
-  static bool _validDownloadPath(String path) =>
-      path.startsWith('/subtitle/') &&
-      !path.contains('..') &&
-      !path.contains('?') &&
-      !path.contains('#');
+  static String? _normalizeDownloadPath(Object? value) {
+    if (value is! String) return null;
+    final path = value.trim();
+    if (path.isEmpty ||
+        path.contains('..') ||
+        path.contains(r'\') ||
+        path.contains('?') ||
+        path.contains('#')) {
+      return null;
+    }
+    final uri = Uri.tryParse(path);
+    if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+    final normalized = path.startsWith('/') ? path : '/$path';
+    return normalized.startsWith('/subtitle/') ? normalized : null;
+  }
 
   @override
   Future<List<int>> download(
@@ -147,14 +178,15 @@ class SubdlProvider implements SubtitleProvider {
     required String apiKey,
     void Function(int received, int total)? onProgress,
   }) async {
-    if (!_validDownloadPath(candidate.downloadPath)) {
+    final path = _normalizeDownloadPath(candidate.downloadPath);
+    if (path == null) {
       throw const SubtitleProviderException('Invalid subtitle download link.');
     }
     try {
       // SubDL documents anonymous downloads for free keys. Paid accounts can
       // opt into authenticated quota separately; never put a key in a URL here.
       final response = await _client.get<ResponseBody>(
-        'https://dl.subdl.com${candidate.downloadPath}',
+        Uri.https('dl.subdl.com', path).toString(),
         options: Options(responseType: ResponseType.stream),
       );
       final body = response.data;
@@ -198,7 +230,7 @@ class SubdlProvider implements SubtitleProvider {
       );
       final data = response.data;
       if (data == null || data['status'] == false) {
-        return _safeMessage(data?['error']);
+        return _safeMessage(data?['error'], apiKey);
       }
       return 'Connected to SubDL';
     } on DioException catch (error) {
@@ -206,10 +238,14 @@ class SubdlProvider implements SubtitleProvider {
     }
   }
 
-  static String _safeMessage(Object? value) {
-    final message = value is String
+  static String _safeMessage(Object? value, [String? secret]) {
+    var message = value is String
         ? value
         : 'SubDL could not complete this request.';
+    final redacted = secret?.trim();
+    if (redacted != null && redacted.isNotEmpty) {
+      message = message.replaceAll(redacted, '[redacted]');
+    }
     return message.length > 180 ? '${message.substring(0, 180)}…' : message;
   }
 

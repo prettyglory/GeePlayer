@@ -62,6 +62,52 @@ void main() {
     expect(await store.cachedFor('video:1'), isEmpty);
   });
 
+  test('detects a ZIP download even when its URL has no ZIP suffix', () async {
+    final archive = Archive()
+      ..addFile(ArchiveFile.string('Movie.2024.en.srt', 'subtitle text'));
+    const candidate = SubtitleCandidate(
+      name: 'Movie.2024.srt',
+      releaseName: 'Movie.2024',
+      language: 'EN',
+      downloadPath: '/subtitle/123/raw-file',
+    );
+
+    final saved = await store.saveDownload(
+      'video:zip-signature',
+      'Movie.2024.mkv',
+      candidate,
+      ZipEncoder().encodeBytes(archive),
+    );
+
+    expect(await saved.file.readAsString(), 'subtitle text');
+  });
+
+  test('reports an invalid ZIP without caching a partial file', () async {
+    const candidate = SubtitleCandidate(
+      name: 'Movie.zip',
+      releaseName: 'Movie',
+      language: 'EN',
+      downloadPath: '/subtitle/movie.zip',
+    );
+
+    await expectLater(
+      store.saveDownload(
+        'video:invalid-zip',
+        'Movie.mkv',
+        candidate,
+        utf8.encode('not a zip'),
+      ),
+      throwsA(
+        isA<SubtitleProviderException>().having(
+          (error) => error.message,
+          'message',
+          contains('invalid'),
+        ),
+      ),
+    );
+    expect(await store.cachedFor('video:invalid-zip'), isEmpty);
+  });
+
   test('stores a raw subtitle without affecting another media id', () async {
     const candidate = SubtitleCandidate(
       name: 'Movie.srt',

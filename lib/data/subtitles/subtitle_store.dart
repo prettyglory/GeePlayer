@@ -134,8 +134,21 @@ class SubtitleStore {
     SubtitleCandidate candidate,
     List<int> bytes,
   ) async {
-    if (candidate.isArchive) {
-      final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    final hasZipSignature = _looksLikeZip(bytes);
+    if (candidate.isArchive && !hasZipSignature) {
+      throw const SubtitleProviderException(
+        'The downloaded subtitle archive is invalid.',
+      );
+    }
+    if (candidate.isArchive || hasZipSignature) {
+      final Archive archive;
+      try {
+        archive = ZipDecoder().decodeBytes(bytes, verify: true);
+      } catch (_) {
+        throw const SubtitleProviderException(
+          'The downloaded subtitle archive is invalid.',
+        );
+      }
       if (archive.length > 100) {
         throw const SubtitleProviderException(
           'Subtitle archive has too many files.',
@@ -215,7 +228,13 @@ class SubtitleStore {
         'SubDL',
       );
     }
-    final extension = _extension(candidate.name) ?? 'srt';
+    final extension =
+        _extension(candidate.name) ?? _supportedFormat(candidate.format);
+    if (extension == null) {
+      throw const SubtitleProviderException(
+        'The downloaded subtitle format is not supported.',
+      );
+    }
     if (bytes.isEmpty || bytes.length > maxSubtitleBytes) {
       throw const SubtitleProviderException(
         'Subtitle file is invalid or too large.',
@@ -248,6 +267,18 @@ class SubtitleStore {
     final extension = name.substring(dot + 1).toLowerCase();
     return _extensions.contains(extension) ? extension : null;
   }
+
+  static String? _supportedFormat(String? value) {
+    final format = value?.toLowerCase().replaceFirst('.', '');
+    return _extensions.contains(format) ? format : null;
+  }
+
+  static bool _looksLikeZip(List<int> bytes) =>
+      bytes.length >= 4 &&
+      bytes[0] == 0x50 &&
+      bytes[1] == 0x4b &&
+      (bytes[2] == 0x03 || bytes[2] == 0x05 || bytes[2] == 0x07) &&
+      (bytes[3] == 0x04 || bytes[3] == 0x06 || bytes[3] == 0x08);
 
   Future<bool> isNegativeCached(String mediaId, String language) async {
     final timestamp = await _prefs.getInt(

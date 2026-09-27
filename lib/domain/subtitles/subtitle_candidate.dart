@@ -7,6 +7,9 @@ class SubtitleCandidate {
     required this.downloadPath,
     this.season,
     this.episode,
+    this.author,
+    this.fps,
+    this.format,
   });
 
   final String name;
@@ -15,8 +18,14 @@ class SubtitleCandidate {
   final String downloadPath;
   final int? season;
   final int? episode;
+  final String? author;
+  final double? fps;
+  final String? format;
 
-  bool get isArchive => downloadPath.toLowerCase().endsWith('.zip');
+  bool get isArchive =>
+      downloadPath.toLowerCase().endsWith('.zip') ||
+      name.toLowerCase().endsWith('.zip') ||
+      format?.toLowerCase() == 'zip';
 }
 
 abstract interface class SubtitleProvider {

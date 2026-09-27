@@ -15,7 +15,7 @@ The Phase 9 storage-management implementation is in place. Baseline permission, 
 - Video and music open a shared playback screen with play, pause, stop, seek, ten-second skip, speed, and remaining-time display. Video has audio-track selection, aspect ratio, fullscreen, screen lock, double-tap seeking, brightness and volume gestures, and Android Picture in Picture. Music has an editable playing queue, previous and next controls, shuffle, repeat-one or repeat-all, and a sleep timer. A mini-player remains in the app shell while navigating and shows an active sleep-timer countdown.
 - Playback position is saved in a local Drift/SQLite database and restored when the same media is opened again. A position near the end is cleared so completed media restarts from the beginning.
 - Video subtitles can be selected from embedded tracks, discovered beside the video when Android exposes an indexed subtitle file, imported from an Android file picker, or searched and downloaded from SubDL. Local and downloaded subtitles are stored in app support storage for later offline playback. A close release-name match can load automatically; ambiguous search results remain available for manual choice. Empty searches are remembered for 24 hours.
-- Settings includes General, Subtitles, and Storage tabs. General preferences cover accent color, an OLED-friendly pure-black theme, default playback speed, resume behavior, background audio, video gestures, and a reset action. The Subtitles tab securely saves your own SubDL API key, controls automatic online search and language preference, and customizes subtitle size, colors, position, and timing. Storage reports cached subtitle usage, safely clears app-owned copies without deleting original media or external subtitle files, and links to bundled open-source license terms. Online search is off by default. Video playback continues during subtitle searches and downloads.
+- Settings includes General, Subtitles, and Storage tabs. General preferences cover accent color, an OLED-friendly pure-black theme, default playback speed, resume behavior, background audio, video gestures, and a reset action. The Subtitles tab reports whether a SubDL key was supplied with `--dart-define`, controls automatic online search and language preference, and customizes subtitle size, colors, position, and timing. Storage reports cached subtitle usage, safely clears app-owned copies without deleting original media or external subtitle files, and links to bundled open-source license terms. Online search is off by default. Video playback continues during subtitle searches and downloads.
 - Favorites, playlists, playback history, and Continue watching are stored in the local Drift database. Library and player menus can add media to a favorite or playlist, while the collection screen supports playlist reordering, rename, deletion, and confirmed history clearing.
 - Music uses an Android foreground media service for playback with notification, lock-screen, headset-button, audio-focus, interruption, and headphone-disconnection handling.
 - Android permission requests are scoped to video or audio. The UI handles denial, partial video access, retry, and a link to Android App Settings. The library refreshes when the app returns to the foreground.
@@ -28,12 +28,12 @@ The Phase 9 storage-management implementation is in place. Baseline permission, 
 - `media_kit` 1.2.6, `media_kit_video` 2.0.1, and video native libraries for playback, subject to device and codec verification.
 - Dio for subtitle network requests.
 - Drift 2.35.0 with SQLite for playback progress.
-- `shared_preferences` for non-sensitive settings and `flutter_secure_storage` for a user-provided SubDL API key.
+- `shared_preferences` for non-sensitive settings. A user-provided SubDL key is read only from the `SUBDL_API_KEY` compile-time environment value.
 - `flutter_riverpod` 3.4.3 for asynchronous library state and dependency injection.
 - `media_kit_libs_android_video` 1.3.8 for Android video and audio native libraries.
 - `audio_service` 0.18.19 and `audio_session` 0.2.4 for Android background media controls and audio focus.
 
-The SubDL integration follows the [official search and download API](https://subdl.com/api-doc). The user supplies a personal key; no key is packaged with the app.
+The SubDL integration follows the [official search and download API](https://subdl.com/api-doc). No key is stored in source; the user supplies one at build/run time through `SUBDL_API_KEY` when online search is needed.
 
 Before distributing a release, include the required notices for the bundled native media libraries. The [Android libmpv build](https://github.com/media-kit/libmpv-android-video-build) documents its component licenses.
 
@@ -76,7 +76,7 @@ With a phone or emulator connected, play a local video from Videos and a song fr
 
 ## Device check for Phase 5
 
-Open a video with an embedded subtitle and switch tracks from the Subtitles panel. Place a same-named SRT beside a video in an indexed folder and check whether Android exposes it to Gee Player. Import an SRT file through the Android picker; reopen the video offline and confirm it reloads. In Settings, save your own SubDL key and enable automatic search. Test a video with an exact release match, a title with several matches that needs manual choice, and a title with no match. Verify playback continues while a subtitle downloads and that an invalid key or offline network gives a useful status. These runtime checks are still pending.
+Open a video with an embedded subtitle and switch tracks from the Subtitles panel. Place a same-named SRT beside a video in an indexed folder and check whether Android exposes it to Gee Player. Import an SRT file through the Android picker; reopen the video offline and confirm it reloads. Start Gee Player with your own SubDL key using `--dart-define=SUBDL_API_KEY=YOUR_KEY`, then enable automatic search in Settings. Test a video with an exact release match, a title with several matches that needs manual choice, and a title with no match. Verify playback continues while a subtitle downloads and that an invalid key or offline network gives a useful status. These runtime checks are still pending.
 
 ## Device check for Phase 6
 
@@ -100,7 +100,7 @@ Run `flutter analyze` and `flutter test` after changes. Tests cover media mappin
 
 ## API configuration
 
-No API key is needed for local playback or imported subtitles. For online search, create a SubDL key in your own account, open Gee Player Settings, enter the key, and save it. The key is stored with Android secure storage. Keys must not be committed to Git or packaged into the app. A key stored on a client device cannot be completely secret from a determined attacker.
+No API key is needed for local playback or imported subtitles. For online search, create a SubDL key in your own account and start the app with `flutter run -d DEVICE_ID --dart-define=SUBDL_API_KEY=YOUR_KEY`. Gee Player reads the key with `const String.fromEnvironment('SUBDL_API_KEY')`; it does not save the key in app preferences or print it. Never commit a key. A compile-time value can still be extracted from a distributed client binary, so use a limited key and rotate it when needed.
 
 ## Builds and platform notes
 

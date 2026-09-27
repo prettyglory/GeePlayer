@@ -13,6 +13,7 @@ import 'package:gee_player/data/playback/android_player_controls.dart';
 import 'package:gee_player/data/settings/application_preferences.dart';
 import 'package:gee_player/data/subtitles/subtitle_preferences.dart';
 import 'package:gee_player/domain/media/local_media.dart';
+import 'package:gee_player/domain/subtitles/subtitle_candidate.dart';
 import 'package:gee_player/presentation/widgets/media_artwork.dart';
 import 'package:gee_player/presentation/widgets/media_actions_button.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -75,8 +76,14 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                   LinearProgressIndicator(value: subtitles.progress),
                 ],
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.closed_caption_rounded),
+                  title: const Text('Current subtitle'),
+                  subtitle: Text(subtitles.activeLabel),
+                ),
+                ListTile(
                   leading: const Icon(Icons.closed_caption_off_rounded),
-                  title: const Text('Off'),
+                  title: const Text('Subtitle Off'),
                   onTap: subtitles.disable,
                 ),
                 if (subtitles.embedded.isNotEmpty) ...[
@@ -111,6 +118,17 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                   subtitle: const Text('SRT, VTT, ASS, SSA or SUB'),
                   onTap: subtitles.importLocal,
                 ),
+                ListTile(
+                  leading: const Icon(Icons.travel_explore_rounded),
+                  title: const Text('Search online subtitles'),
+                  subtitle: Text(
+                    _controller.current?.fileName ??
+                        'Use the current video filename',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: subtitles.busy ? null : subtitles.searchCurrentVideo,
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: searchController,
@@ -144,7 +162,7 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text('${option.language} • ${option.name}'),
+                      subtitle: Text(_subtitleResultDetails(option)),
                       onTap: subtitles.busy
                           ? null
                           : () => subtitles.download(option),
@@ -156,6 +174,14 @@ class _PlaybackScreenState extends ConsumerState<PlaybackScreen> {
         ),
       ),
     ).whenComplete(searchController.dispose);
+  }
+
+  String _subtitleResultDetails(SubtitleCandidate option) {
+    final details = <String>[option.language];
+    if (option.author != null) details.add('by ${option.author}');
+    if (option.fps != null) details.add('${option.fps} FPS');
+    if (option.name.isNotEmpty) details.add(option.name);
+    return details.join(' • ');
   }
 
   void _showAudioTracks() {

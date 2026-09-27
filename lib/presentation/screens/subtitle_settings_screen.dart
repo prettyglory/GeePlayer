@@ -16,10 +16,9 @@ class SubtitleSettingsScreen extends ConsumerStatefulWidget {
 
 class _SubtitleSettingsScreenState
     extends ConsumerState<SubtitleSettingsScreen> {
-  final _keyController = TextEditingController();
   bool _loading = true;
   bool _autoSearch = false;
-  String _language = 'SW';
+  String _language = 'EN';
   SubtitleAppearance _appearance = const SubtitleAppearance();
   String? _status;
 
@@ -32,12 +31,10 @@ class _SubtitleSettingsScreenState
   Future<void> _load() async {
     try {
       final prefs = ref.read(subtitlePreferencesProvider);
-      final key = await prefs.apiKey();
       final auto = await prefs.autoSearch();
       final language = await prefs.preferredLanguage();
       final appearance = await prefs.appearance();
       if (!mounted) return;
-      _keyController.text = key ?? '';
       setState(() {
         _autoSearch = auto;
         _language = language;
@@ -54,18 +51,22 @@ class _SubtitleSettingsScreenState
     }
   }
 
-  Future<void> _saveKey() async {
+  Future<void> _checkConnection() async {
+    final key = ref.read(subdlApiKeyProvider).trim();
+    if (key.isEmpty) {
+      setState(
+        () => _status =
+            'Not configured. Restart with '
+            '--dart-define=SUBDL_API_KEY=YOUR_KEY.',
+      );
+      return;
+    }
     setState(() => _status = 'Checking SubDL…');
     try {
-      await ref
-          .read(subtitlePreferencesProvider)
-          .setApiKey(_keyController.text);
-      final status = await ref
-          .read(subtitleProvider)
-          .accountStatus(_keyController.text);
+      final status = await ref.read(subtitleProvider).accountStatus(key);
       if (mounted) setState(() => _status = status);
     } catch (_) {
-      if (mounted) setState(() => _status = 'Could not save the API key.');
+      if (mounted) setState(() => _status = 'Could not reach SubDL.');
     }
   }
 
@@ -77,13 +78,8 @@ class _SubtitleSettingsScreenState
   }
 
   @override
-  void dispose() {
-    _keyController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final keyConfigured = ref.watch(subdlApiKeyProvider).trim().isNotEmpty;
     return SafeArea(
       top: !widget.embedded,
       bottom: !widget.embedded,
@@ -99,27 +95,27 @@ class _SubtitleSettingsScreenState
           ],
           const SizedBox(height: 12),
           const Text(
-            'Embedded and imported subtitles work offline. Add your own SubDL key to search online.',
+            'Embedded and imported subtitles work offline. Online search uses '
+            'the SUBDL_API_KEY supplied when Gee Player starts.',
           ),
           const SizedBox(height: 20),
-          TextField(
-            controller: _keyController,
-            obscureText: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: const InputDecoration(
-              labelText: 'SubDL API key',
-              border: OutlineInputBorder(),
-              helperText: 'Stored in Android secure storage',
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              keyConfigured ? Icons.key_rounded : Icons.key_off_rounded,
             ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: _loading ? null : _saveKey,
-              child: const Text('Save key'),
+            title: const Text('SubDL API configuration'),
+            subtitle: Text(
+              keyConfigured
+                  ? 'Configured for this app run. The key is never displayed.'
+                  : 'Not configured. Use --dart-define=SUBDL_API_KEY=YOUR_KEY.',
             ),
+            trailing: keyConfigured
+                ? TextButton(
+                    onPressed: _loading ? null : _checkConnection,
+                    child: const Text('Check'),
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
           SwitchListTile.adaptive(
@@ -148,13 +144,19 @@ class _SubtitleSettingsScreenState
             ),
             items: const [
               DropdownMenuItem(
+                value: 'EN',
+                child: Text(
+                  'English → Kiswahili',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
                 value: 'SW',
                 child: Text(
                   'Kiswahili → English',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              DropdownMenuItem(value: 'EN', child: Text('English')),
             ],
             onChanged: _loading
                 ? null

@@ -19,6 +19,7 @@ class SubtitleController extends ChangeNotifier {
     this._preferences,
     this._provider,
     this._companionFinder,
+    this._apiKey,
   ) {
     _playback.addListener(_onPlaybackChanged);
     _onPlaybackChanged();
@@ -29,12 +30,14 @@ class SubtitleController extends ChangeNotifier {
   final SubtitlePreferences _preferences;
   final SubtitleProvider _provider;
   final CompanionSubtitleFinder _companionFinder;
+  final String _apiKey;
   StreamSubscription<Tracks>? _tracksSubscription;
   int _session = -1;
   bool _disposed = false;
   bool busy = false;
   double? progress;
   String? message;
+  String activeLabel = 'Off';
   List<StoredSubtitle> cached = const [];
   List<SubtitleCandidate> online = const [];
   List<SubtitleTrack> embedded = const [];
@@ -54,6 +57,7 @@ class SubtitleController extends ChangeNotifier {
         busy = false;
         progress = null;
         message = null;
+        activeLabel = 'Off';
         _notify();
       }
       return;
@@ -88,6 +92,7 @@ class SubtitleController extends ChangeNotifier {
     busy = true;
     progress = null;
     online = const [];
+    activeLabel = 'Off';
     message = 'Checking subtitles…';
     _notify();
     try {
@@ -98,12 +103,14 @@ class SubtitleController extends ChangeNotifier {
       final embeddedChoice = _preferredEmbedded(order);
       if (embeddedChoice != null) {
         await _playback.player.setSubtitleTrack(embeddedChoice);
+        activeLabel = _embeddedLabel(embeddedChoice);
         message = 'Embedded subtitles';
         return;
       }
       final existingLocal = _preferredLocal();
       if (existingLocal != null) {
         await _applyFile(existingLocal);
+        activeLabel = _storedLabel(existingLocal);
         message = '${existingLocal.source} subtitle';
         return;
       }
@@ -118,12 +125,14 @@ class SubtitleController extends ChangeNotifier {
         if (!_current(media, session)) return;
         cached = await _store.cachedFor(media.id);
         await _applyFile(file);
+        activeLabel = _storedLabel(file);
         message = 'Local subtitle found beside video';
         return;
       }
       final local = _preferredCached(order);
       if (local != null) {
         await _applyFile(local);
+        activeLabel = _storedLabel(local);
         message = '${local.source} subtitle';
         return;
       }
@@ -131,9 +140,9 @@ class SubtitleController extends ChangeNotifier {
         message = 'No local subtitle. Search online or import a file.';
         return;
       }
-      final key = await _preferences.apiKey();
-      if (key == null || key.isEmpty) {
-        message = 'Add a SubDL API key in Settings to search automatically.';
+      final key = _apiKey.trim();
+      if (key.isEmpty) {
+        message = subdlKeyMissingMessage;
         return;
       }
       if (await _store.isNegativeCached(media.id, order.first)) {
@@ -207,18 +216,21 @@ class SubtitleController extends ChangeNotifier {
 
   Future<void> selectEmbedded(SubtitleTrack track) async {
     await _playback.player.setSubtitleTrack(track);
+    activeLabel = _embeddedLabel(track);
     message = 'Embedded subtitle selected';
     _notify();
   }
 
   Future<void> selectCached(StoredSubtitle file) async {
     await _applyFile(file);
+    activeLabel = _storedLabel(file);
     message = '${file.source} subtitle selected';
     _notify();
   }
 
   Future<void> disable() async {
     await _playback.player.setSubtitleTrack(SubtitleTrack.no());
+    activeLabel = 'Off';
     message = 'Subtitles off';
     _notify();
   }
@@ -245,6 +257,7 @@ class SubtitleController extends ChangeNotifier {
       final file = await _store.importFile(media.id, selected);
       cached = await _store.cachedFor(media.id);
       await _applyFile(file);
+      activeLabel = _storedLabel(file);
       message = 'Imported ${selected.name}';
     } catch (error) {
       message = _errorText(error);
@@ -261,26 +274,47 @@ class SubtitleController extends ChangeNotifier {
       _notify();
       return;
     }
+    await _searchOnline(media, query, byFileName: false);
+  }
+
+  Future<void> searchCurrentVideo() async {
+    final media = _playback.current;
+    if (media == null || media.kind != MediaKind.video || busy) return;
+    await _searchOnline(media, media.fileName, byFileName: true);
+  }
+
+  Future<void> _searchOnline(
+    LocalMedia media,
+    String query, {
+    required bool byFileName,
+  }) async {
     final session = _session;
     busy = true;
     message = 'Searching SubDL…';
     _notify();
     try {
-      final key = await _preferences.apiKey();
-      if (key == null || key.isEmpty) {
-        throw const SubtitleProviderException(
-          'Add your SubDL API key in Settings.',
-        );
+      final key = _apiKey.trim();
+      if (key.isEmpty) {
+        throw const SubtitleProviderException(subdlKeyMissingMessage);
       }
-      final results = await _provider.searchByTitle(
-        query,
-        apiKey: key,
-        languages: await _preferences.languageOrder(),
-      );
+      final languages = await _preferences.languageOrder();
+      final results = byFileName
+          ? await _provider.searchByFileName(
+              query,
+              apiKey: key,
+              languages: languages,
+            )
+          : await _provider.searchByTitle(
+              query,
+              apiKey: key,
+              languages: languages,
+            );
       if (!_current(media, session)) return;
       online = results;
       message = results.isEmpty
-          ? 'No subtitles found for that title.'
+          ? byFileName
+                ? 'No subtitles found for this video filename.'
+                : 'No subtitles found for that title.'
           : '${results.length} subtitle options';
     } catch (error) {
       if (_current(media, session)) message = _errorText(error);
@@ -301,11 +335,9 @@ class SubtitleController extends ChangeNotifier {
     message = 'Downloading subtitle…';
     _notify();
     try {
-      final key = await _preferences.apiKey();
-      if (key == null || key.isEmpty) {
-        throw const SubtitleProviderException(
-          'Add your SubDL API key in Settings.',
-        );
+      final key = _apiKey.trim();
+      if (key.isEmpty) {
+        throw const SubtitleProviderException(subdlKeyMissingMessage);
       }
       await _downloadAndApply(media, candidate, key, session);
     } catch (error) {
@@ -349,8 +381,15 @@ class SubtitleController extends ChangeNotifier {
       (await _preferences.languageOrder()).first,
     );
     await _applyFile(file);
+    activeLabel = '${candidate.language} • SubDL';
     message = '${candidate.language} subtitle ready';
   }
+
+  static String _embeddedLabel(SubtitleTrack track) =>
+      track.title ?? track.language?.toUpperCase() ?? 'Embedded';
+
+  static String _storedLabel(StoredSubtitle file) =>
+      '${file.language} • ${file.source}';
 
   static String _errorText(Object error) => error is SubtitleProviderException
       ? error.message

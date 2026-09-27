@@ -31,7 +31,7 @@ void main() {
       final adapter = RecordingAdapter(
         (_) => ResponseBody.fromString(
           '''
-      {"status":true,"subtitles":[{"name":"Season.zip","release_name":"Show.S01E02","language":"SW","url":"/subtitle/pack.zip","unpack_files":[{"name":"Show.S01E02.srt","release_name":"Show.S01E02","language":"SW","season":1,"episode":2,"url":"/subtitle/pack/file2"}]}]}
+      {"status":true,"subtitles":[{"name":"Season.zip","release_name":"Show.S01E02","language":"SW","url":"/subtitle/pack.zip","author":"Uploader","fps":"23.976","unpack_files":[{"name":"Show.S01E02.srt","release_name":"Show.S01E02","language":"SW","season":1,"episode":2,"format":"srt","url":"subtitle/pack/file2"}]}]}
       ''',
           200,
           headers: {
@@ -54,12 +54,57 @@ void main() {
       );
       expect(adapter.lastRequest!.queryParameters['languages'], 'SW,EN');
       expect(adapter.lastRequest!.queryParameters['unpack'], 1);
+      expect(adapter.lastRequest!.queryParameters['comment'], 1);
       expect(result, hasLength(1));
       expect(result.single.language, 'SW');
       expect(result.single.downloadPath, '/subtitle/pack/file2');
       expect(result.single.episode, 2);
+      expect(result.single.author, 'Uploader');
+      expect(result.single.fps, 23.976);
+      expect(result.single.format, 'srt');
     },
   );
+
+  test('returns an empty list when SubDL has no subtitle results', () async {
+    final adapter = RecordingAdapter(
+      (_) => ResponseBody.fromString(
+        '{"status":true,"subtitles":[]}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      ),
+    );
+    final provider = SubdlProvider(Dio()..httpClientAdapter = adapter);
+
+    expect(
+      await provider.searchByTitle(
+        'Unknown Movie',
+        apiKey: 'private-key',
+        languages: ['EN'],
+      ),
+      isEmpty,
+    );
+  });
+
+  test('rejects a missing API key before making a request', () async {
+    final adapter = RecordingAdapter(
+      (_) => ResponseBody.fromString('{"status":true}', 200),
+    );
+    final provider = SubdlProvider(Dio()..httpClientAdapter = adapter);
+
+    await expectLater(
+      provider.searchByTitle('Movie', apiKey: ' ', languages: ['EN']),
+      throwsA(
+        isA<SubtitleProviderException>().having(
+          (error) => error.message,
+          'message',
+          contains('SUBDL_API_KEY'),
+        ),
+      ),
+    );
+    expect(adapter.lastRequest, isNull);
+  });
 
   test(
     'downloads from the documented host without putting the key in the URL',
@@ -78,7 +123,7 @@ void main() {
         name: 'Movie.srt',
         releaseName: 'Movie',
         language: 'EN',
-        downloadPath: '/subtitle/123/file',
+        downloadPath: 'subtitle/123/file',
       );
       final progress = <int>[];
       expect(
@@ -90,6 +135,7 @@ void main() {
         [1, 2, 3],
       );
       expect(adapter.lastRequest!.uri.host, 'dl.subdl.com');
+      expect(adapter.lastRequest!.uri.path, '/subtitle/123/file');
       expect(adapter.lastRequest!.uri.query, isEmpty);
       expect(progress.last, 3);
     },

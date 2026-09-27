@@ -12,6 +12,9 @@ final subtitlePreferencesProvider = Provider<SubtitlePreferences>(
 );
 final subtitleStoreProvider = Provider<SubtitleStore>((ref) => SubtitleStore());
 final subtitleProvider = Provider<SubtitleProvider>((ref) => SubdlProvider());
+final subdlApiKeyProvider = Provider<String>(
+  (ref) => const String.fromEnvironment('SUBDL_API_KEY'),
+);
 final companionSubtitleFinderProvider = Provider<CompanionSubtitleFinder>(
   (ref) => const AndroidCompanionSubtitleFinder(),
 );
@@ -74,6 +77,7 @@ final subtitleControllerProvider = Provider<SubtitleController>((ref) {
     ref.watch(subtitlePreferencesProvider),
     ref.watch(subtitleProvider),
     ref.watch(companionSubtitleFinderProvider),
+    ref.watch(subdlApiKeyProvider),
   );
   ref.onDispose(controller.dispose);
   return controller;

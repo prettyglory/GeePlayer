@@ -1,4 +1,3 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SubtitleAppearance {
@@ -32,12 +31,9 @@ class SubtitleAppearance {
 }
 
 class SubtitlePreferences {
-  SubtitlePreferences({FlutterSecureStorage? secureStorage})
-    : _secure = secureStorage ?? const FlutterSecureStorage();
+  SubtitlePreferences();
 
-  final FlutterSecureStorage _secure;
   late final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
-  static const _apiKey = 'subdl.api_key';
   static const _autoSearch = 'subtitle.auto_search';
   static const _language = 'subtitle.language';
   static const _fontSize = 'subtitle.font_size';
@@ -46,29 +42,20 @@ class SubtitlePreferences {
   static const _bottomPadding = 'subtitle.bottom_padding';
   static const _delayMilliseconds = 'subtitle.delay_ms';
 
-  Future<String?> apiKey() => _secure.read(key: _apiKey);
-
-  Future<void> setApiKey(String value) async {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      await _secure.delete(key: _apiKey);
-    } else {
-      await _secure.write(key: _apiKey, value: trimmed);
-    }
-  }
-
   Future<bool> autoSearch() async => await _prefs.getBool(_autoSearch) ?? false;
 
   Future<void> setAutoSearch(bool value) => _prefs.setBool(_autoSearch, value);
 
   Future<String> preferredLanguage() async =>
-      await _prefs.getString(_language) ?? 'SW';
+      await _prefs.getString(_language) ?? 'EN';
 
   Future<void> setPreferredLanguage(String value) =>
       _prefs.setString(_language, value == 'EN' ? 'EN' : 'SW');
 
   Future<List<String>> languageOrder() async =>
-      await preferredLanguage() == 'EN' ? const ['EN'] : const ['SW', 'EN'];
+      await preferredLanguage() == 'EN'
+      ? const ['EN', 'SW']
+      : const ['SW', 'EN'];
 
   Future<SubtitleAppearance> appearance() async => SubtitleAppearance(
     fontSize: await _prefs.getDouble(_fontSize) ?? 32,

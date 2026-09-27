@@ -38,7 +38,11 @@ void main() {
     await tester.tap(find.text('Subtitles'));
     await tester.pumpAndSettle();
 
-    expect(find.text('SubDL API key'), findsOneWidget);
+    expect(find.text('SubDL API configuration'), findsOneWidget);
+    expect(
+      find.text('Not configured. Use --dart-define=SUBDL_API_KEY=YOUR_KEY.'),
+      findsOneWidget,
+    );
     expect(find.text('Subtitle appearance'), findsOneWidget);
 
     await tester.tap(find.text('Storage'));
